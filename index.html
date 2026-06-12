@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0F1117" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Spendwise" />
+<title>Spendwise - Family Expense Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #0F1117; overscroll-behavior-y: none; }
+  body { font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  #root { min-height: 100vh; }
+  input, select, button, textarea { font-family: 'Inter', system-ui, sans-serif; }
+  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; }
+  ::-webkit-scrollbar { width: 0; height: 0; }
+  /* Loading splash */
+  #splash {
+    position: fixed; inset: 0; background: #0F1117; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; z-index: 9999; font-family: 'Inter', sans-serif;
+  }
+  #splash .logo { font-size: 56px; margin-bottom: 12px; animation: pulse 1.4s ease-in-out infinite; }
+  #splash .brand { color: #E8E9F0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  @keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: 0.7; } }
+</style>
+</head>
+<body>
+<div id="splash">
+  <div class="logo">💳</div>
+  <div class="brand">Spendwise</div>
+</div>
+<div id="root"></div>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useMemo } = React;
+
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const CATEGORIES = [
+  { id: "food",          label: "Food & Dining",  icon: "🍔", color: "#FF8C42" },
+  { id: "transport",     label: "Transport",       icon: "🚗", color: "#4ECDC4" },
+  { id: "shopping",      label: "Shopping",        icon: "🛍️", color: "#A78BFA" },
+  { id: "health",        label: "Health",          icon: "💊", color: "#22D3A5" },
+  { id: "entertainment", label: "Entertainment",   icon: "🎬", color: "#F472B6" },
+  { id: "bills",         label: "Bills",           icon: "📄", color: "#60A5FA" },
+  { id: "travel",        label: "Travel",          icon: "✈️", color: "#FBBF24" },
+  { id: "other",         label: "Other",           icon: "📦", color: "#9CA3AF" },
+];
+
+const MEMBER_COLORS = ["#7C5CFC","#22D3A5","#FF8C42","#F472B6","#60A5FA","#FBBF24","#FF6B6B","#4ECDC4"];
+
+const CURRENCIES = [
+  { code: "USD", symbol: "$",  name: "US Dollar",        flag: "🇺🇸" },
+  { code: "EUR", symbol: "€",  name: "Euro",             flag: "🇪🇺" },
+  { code: "GBP", symbol: "£",  name: "British Pound",    flag: "🇬🇧" },
+  { code: "INR", symbol: "₹",  name: "Indian Rupee",     flag: "🇮🇳" },
+  { code: "JPY", symbol: "¥",  name: "Japanese Yen",     flag: "🇯🇵" },
+  { code: "AUD", symbol: "A$", name: "Australian Dollar",flag: "🇦🇺" },
+  { code: "CAD", symbol: "C$", name: "Canadian Dollar",  flag: "🇨🇦" },
+  { code: "CNY", symbol: "¥",  name: "Chinese Yuan",     flag: "🇨🇳" },
+  { code: "AED", symbol: "د.إ",name: "UAE Dirham",       flag: "🇦🇪" },
+  { code: "SGD", symbol: "S$", name: "Singapore Dollar", flag: "🇸🇬" },
+];
+const getCurrency = (code) => CURRENCIES.find((c) => c.code === code) || CURRENCIES[0];
+const ZERO_DECIMAL = ["JPY"];
+
+// ─── Seed data ─────────────────────────────────────────────────────────────────
+
+const SEED_USERS = [
+  { id: "u1", name: "Alex Johnson",  email: "alex@family.com",  password: "password", avatar: "AJ", color: "#7C5CFC", role: "admin" },
+  { id: "u2", name: "Sam Johnson",   email: "sam@family.com",   password: "password", avatar: "SJ", color: "#22D3A5", role: "member" },
+  { id: "u3", name: "Jordan Johnson",email: "jordan@family.com",password: "password", avatar: "JJ", color: "#FF8C42", role: "member" },
+];
+
+const SEED_GROUP = { id: "g1", name: "Johnson Family", budget: 4000, members: ["u1","u2","u3"], currency: "USD" };
+
+const SEED_EXPENSES = [
+  { id: 1,  title: "Grocery run",    amount: 84.50,  category: "food",          date: "2026-06-11", note: "Weekly groceries", userId: "u1", groupId: "g1" },
+  { id: 2,  title: "Uber to office", amount: 12.00,  category: "transport",     date: "2026-06-11", note: "",                 userId: "u2", groupId: "g1" },
+  { id: 3,  title: "Netflix",        amount: 15.99,  category: "entertainment", date: "2026-06-10", note: "Monthly sub",      userId: "u1", groupId: "g1" },
+  { id: 4,  title: "Pharmacy",       amount: 38.75,  category: "health",        date: "2026-06-10", note: "",                 userId: "u3", groupId: "g1" },
+  { id: 5,  title: "Amazon order",   amount: 129.00, category: "shopping",      date: "2026-06-09", note: "Headphones",       userId: "u2", groupId: "g1" },
+  { id: 6,  title: "Electric bill",  amount: 92.00,  category: "bills",         date: "2026-06-08", note: "June bill",        userId: "u1", groupId: "g1" },
+  { id: 7,  title: "Sushi dinner",   amount: 67.40,  category: "food",          date: "2026-06-08", note: "",                 userId: "u3", groupId: "g1" },
+  { id: 8,  title: "Flight tickets", amount: 340.00, category: "travel",        date: "2026-06-07", note: "NYC trip",         userId: "u1", groupId: "g1" },
+  { id: 9,  title: "School books",   amount: 54.00,  category: "shopping",      date: "2026-06-07", note: "",                 userId: "u3", groupId: "g1" },
+  { id: 10, title: "Gym membership", amount: 45.00,  category: "health",        date: "2026-06-06", note: "Monthly",          userId: "u2", groupId: "g1" },
+];
+
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+
+const getCat  = (id) => CATEGORIES.find((c) => c.id === id) || CATEGORIES[7];
+const fmt = (n, code = "USD") => {
+  const dec = ZERO_DECIMAL.includes(code) ? 0 : 2;
+  return Number(n).toLocaleString("en-US", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+};
+const money = (n, code = "USD") => `${getCurrency(code).symbol}${fmt(n, code)}`;
+const TODAY   = new Date().toISOString().slice(0, 10);
+const YESTERDAY = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+
+function formatDateLabel(d) {
+  if (d === TODAY) return "Today";
+  if (d === YESTERDAY) return "Yesterday";
+  return new Date(d + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
+function groupByDate(list) {
+  const map = {};
+  list.forEach((e) => { if (!map[e.date]) map[e.date] = []; map[e.date].push(e); });
+  return Object.entries(map).sort((a, b) => (a[0] < b[0] ? 1 : -1));
+}
+
+function initials(name) {
+  return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function Avatar({ user, size = 36 }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: size / 3,
+      background: user.color + "33", border: `2px solid ${user.color}`,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: size * 0.33, fontWeight: 700, color: user.color, flexShrink: 0,
+      fontFamily: "Inter,sans-serif",
+    }}>
+      {user.avatar || initials(user.name)}
+    </div>
+  );
+}
+
+function RadialGauge({ spent, budget, currency }) {
+  const pct = Math.min(spent / budget, 1);
+  const r = 72, cx = 90, cy = 90;
+  const circumference = 2 * Math.PI * r;
+  const arcLen = circumference * 0.75;
+  const gap    = circumference * 0.25;
+  const offset = arcLen * (1 - pct);
+  const color  = pct > 0.9 ? "#FF6B6B" : pct > 0.7 ? "#FBBF24" : "#7C5CFC";
+  return (
+    <svg width="180" height="180" viewBox="0 0 180 180">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1E2130" strokeWidth="14"
+        strokeDasharray={`${arcLen} ${gap}`} strokeLinecap="round"
+        transform={`rotate(135 ${cx} ${cy})`} />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth="14"
+        strokeDasharray={`${Math.max(arcLen - offset, 0)} ${circumference}`}
+        strokeLinecap="round" transform={`rotate(135 ${cx} ${cy})`}
+        style={{ transition: "stroke-dasharray 0.6s cubic-bezier(.4,0,.2,1), stroke 0.4s" }} />
+      <text x={cx} y={cy - 10} textAnchor="middle" fill="#E8E9F0" fontSize="20" fontWeight="700" fontFamily="Inter,sans-serif">{money(spent, currency)}</text>
+      <text x={cx} y={cy + 14} textAnchor="middle" fill="#6B7280" fontSize="11" fontFamily="Inter,sans-serif">of {money(budget, currency)}</text>
+      <text x={cx} y={cy + 32} textAnchor="middle" fill={color} fontSize="12" fontWeight="600" fontFamily="Inter,sans-serif">{Math.round(pct * 100)}% used</text>
+    </svg>
+  );
+}
+
+// ─── AUTH SCREENS ─────────────────────────────────────────────────────────────
+
+function AuthScreen({ users, onLogin, onRegister }) {
+  const [mode, setMode] = React.useState("login"); // login | register
+  const [form, setForm] = React.useState({ name: "", email: "", password: "", confirm: "", currency: "USD" });
+  const [error, setError] = React.useState("");
+  const [showPass, setShowPass] = React.useState(false);
+
+  const S = {
+    root: { minHeight: "100vh", background: "#0F1117", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", fontFamily: "Inter,system-ui,sans-serif" },
+    logo: { fontSize: 48, marginBottom: 8 },
+    brand: { fontSize: 28, fontWeight: 800, color: "#E8E9F0", letterSpacing: "-1px", marginBottom: 4 },
+    tagline: { fontSize: 13, color: "#6B7280", marginBottom: 36 },
+    card: { width: "100%", maxWidth: 400, background: "#1A1D27", borderRadius: 24, padding: 28, border: "1px solid #252836" },
+    title: { fontSize: 20, fontWeight: 700, color: "#E8E9F0", marginBottom: 6 },
+    sub: { fontSize: 13, color: "#6B7280", marginBottom: 24 },
+    label: { fontSize: 11, color: "#6B7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, display: "block" },
+    inputWrap: { position: "relative", marginBottom: 16 },
+    input: { width: "100%", background: "#0F1117", border: "1.5px solid #252836", borderRadius: 12, padding: "12px 14px", color: "#E8E9F0", fontSize: 15, fontFamily: "inherit", outline: "none", boxSizing: "border-box" },
+    eyeBtn: { position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#6B7280", cursor: "pointer", fontSize: 16 },
+    btn: { width: "100%", padding: 14, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", borderRadius: 13, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", marginTop: 4, boxShadow: "0 4px 20px rgba(124,92,252,0.35)", letterSpacing: 0.3 },
+    toggle: { textAlign: "center", marginTop: 18, fontSize: 13, color: "#6B7280" },
+    toggleLink: { color: "#7C5CFC", fontWeight: 600, cursor: "pointer", marginLeft: 4, background: "none", border: "none", fontSize: 13, fontFamily: "inherit" },
+    error: { background: "#FF6B6B22", border: "1px solid #FF6B6B44", borderRadius: 10, padding: "10px 14px", color: "#FF6B6B", fontSize: 13, marginBottom: 16 },
+    demoBox: { marginTop: 20, background: "#0F1117", borderRadius: 12, padding: "14px 16px", border: "1px solid #252836" },
+    demoTitle: { fontSize: 11, color: "#6B7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 },
+    demoRow: { display: "flex", alignItems: "center", gap: 8, padding: "6px 0", cursor: "pointer", borderRadius: 8 },
+  };
+
+  function set(k, v) { setForm((p) => ({ ...p, [k]: v })); setError(""); }
+
+  function handleLogin() {
+    const u = users.find((u) => u.email.toLowerCase() === form.email.toLowerCase() && u.password === form.password);
+    if (!u) { setError("Invalid email or password."); return; }
+    onLogin(u);
+  }
+
+  function handleRegister() {
+    if (!form.name.trim()) { setError("Please enter your name."); return; }
+    if (!form.email.includes("@")) { setError("Please enter a valid email."); return; }
+    if (form.password.length < 6) { setError("Password must be at least 6 characters."); return; }
+    if (form.password !== form.confirm) { setError("Passwords don't match."); return; }
+    if (users.find((u) => u.email.toLowerCase() === form.email.toLowerCase())) { setError("Email already registered."); return; }
+    const newUser = {
+      id: "u" + Date.now(), name: form.name.trim(), email: form.email.toLowerCase(),
+      password: form.password, avatar: initials(form.name.trim()),
+      color: MEMBER_COLORS[users.length % MEMBER_COLORS.length], role: "member",
+    };
+    onRegister(newUser, form.currency);
+  }
+
+  return (
+    <div style={S.root}>
+      <div style={S.logo}>💳</div>
+      <div style={S.brand}>Spendwise</div>
+      <div style={S.tagline}>Smart family expense tracking</div>
+
+      <div style={S.card}>
+        <div style={S.title}>{mode === "login" ? "Welcome back" : "Create account"}</div>
+        <div style={S.sub}>{mode === "login" ? "Sign in to your family account" : "Join or start a family group"}</div>
+
+        {error && <div style={S.error}>⚠️ {error}</div>}
+
+        {mode === "register" && (
+          <div style={S.inputWrap}>
+            <label style={S.label}>Full Name</label>
+            <input style={S.input} placeholder="Your full name" value={form.name} onChange={(e) => set("name", e.target.value)} />
+          </div>
+        )}
+        <div style={S.inputWrap}>
+          <label style={S.label}>Email</label>
+          <input style={S.input} placeholder="you@example.com" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
+        </div>
+        <div style={S.inputWrap}>
+          <label style={S.label}>Password</label>
+          <input style={S.input} placeholder="••••••••" type={showPass ? "text" : "password"} value={form.password} onChange={(e) => set("password", e.target.value)} />
+          <button style={S.eyeBtn} onClick={() => setShowPass((p) => !p)}>{showPass ? "🙈" : "👁️"}</button>
+        </div>
+        {mode === "register" && (
+          <div style={S.inputWrap}>
+            <label style={S.label}>Confirm Password</label>
+            <input style={S.input} placeholder="••••••••" type={showPass ? "text" : "password"} value={form.confirm} onChange={(e) => set("confirm", e.target.value)} />
+          </div>
+        )}
+        {mode === "register" && (
+          <div style={S.inputWrap}>
+            <label style={S.label}>Preferred Currency</label>
+            <select style={{ ...S.input, appearance: "none", cursor: "pointer" }} value={form.currency} onChange={(e) => set("currency", e.target.value)}>
+              {CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>{c.flag} {c.code} — {c.name} ({c.symbol})</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <button style={S.btn} onClick={mode === "login" ? handleLogin : handleRegister}>
+          {mode === "login" ? "Sign In →" : "Create Account →"}
+        </button>
+
+        <div style={S.toggle}>
+          {mode === "login" ? "Don't have an account?" : "Already have an account?"}
+          <button style={S.toggleLink} onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}>
+            {mode === "login" ? "Register" : "Sign In"}
+          </button>
+        </div>
+
+        {mode === "login" && (
+          <div style={S.demoBox}>
+            <div style={S.demoTitle}>Demo accounts (password: password)</div>
+            {SEED_USERS.map((u) => (
+              <div key={u.id} style={S.demoRow} onClick={() => { setForm({ ...form, email: u.email, password: "password" }); setError(""); }}>
+                <Avatar user={u} size={28} />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#E8E9F0" }}>{u.name}</div>
+                  <div style={{ fontSize: 11, color: "#6B7280" }}>{u.email}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── EXPENSE MODAL ─────────────────────────────────────────────────────────────
+
+function ExpenseModal({ onClose, onSave, initial, members, currentUserId, isAdmin, currency }) {
+  const [form, setForm] = React.useState(initial || {
+    title: "", amount: "", category: "food", date: TODAY, note: "", userId: currentUserId,
+  });
+  const [error, setError] = React.useState("");
+  const cur = getCurrency(currency);
+
+  function set(k, v) { setForm((p) => ({ ...p, [k]: v })); setError(""); }
+
+  function save() {
+    if (!form.title.trim()) { setError("Please enter a title."); return; }
+    if (!form.amount || isNaN(parseFloat(form.amount)) || parseFloat(form.amount) <= 0) { setError("Please enter a valid amount."); return; }
+    onSave({ ...form, amount: parseFloat(form.amount), title: form.title.trim() });
+  }
+
+  const S = {
+    overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100, backdropFilter: "blur(4px)" },
+    sheet: { background: "#1A1D27", borderRadius: "24px 24px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 480, border: "1px solid #252836", borderBottom: "none", maxHeight: "90vh", overflowY: "auto" },
+    handle: { width: 40, height: 4, background: "#252836", borderRadius: 4, margin: "0 auto 20px" },
+    title: { fontSize: 18, fontWeight: 700, color: "#E8E9F0", marginBottom: 20 },
+    label: { fontSize: 11, color: "#6B7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, display: "block" },
+    input: { width: "100%", background: "#0F1117", border: "1.5px solid #252836", borderRadius: 12, padding: "12px 14px", color: "#E8E9F0", fontSize: 15, fontFamily: "inherit", outline: "none", boxSizing: "border-box" },
+    group: { marginBottom: 18 },
+    catGrid: { display: "flex", flexWrap: "wrap", gap: 8 },
+    catChip: (a, c) => ({ padding: "7px 11px", borderRadius: 10, border: `1.5px solid ${a ? c : "#252836"}`, background: a ? c + "22" : "#0F1117", color: a ? c : "#6B7280", fontSize: 12, fontWeight: a ? 600 : 400, cursor: "pointer", display: "flex", gap: 5, alignItems: "center" }),
+    memberRow: { display: "flex", gap: 8, flexWrap: "wrap" },
+    memberChip: (a, c) => ({ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 20, border: `1.5px solid ${a ? c : "#252836"}`, background: a ? c + "22" : "#0F1117", color: a ? c : "#6B7280", fontSize: 12, fontWeight: a ? 600 : 400, cursor: "pointer" }),
+    saveBtn: { width: "100%", padding: 14, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", borderRadius: 13, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", marginTop: 4, boxShadow: "0 4px 20px rgba(124,92,252,0.35)" },
+    cancelBtn: { width: "100%", padding: 13, background: "transparent", border: "1.5px solid #252836", borderRadius: 13, color: "#6B7280", fontSize: 14, fontWeight: 500, cursor: "pointer", marginTop: 10 },
+    error: { background: "#FF6B6B22", border: "1px solid #FF6B6B44", borderRadius: 10, padding: "10px 14px", color: "#FF6B6B", fontSize: 13, marginBottom: 16 },
+  };
+
+  return (
+    <div style={S.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div style={S.sheet}>
+        <div style={S.handle} />
+        <div style={S.title}>{initial?.id ? "Edit Expense" : "Add Expense"}</div>
+        {error && <div style={S.error}>⚠️ {error}</div>}
+
+        <div style={S.group}>
+          <label style={S.label}>Title</label>
+          <input style={S.input} placeholder="e.g. Groceries, Netflix…" value={form.title} onChange={(e) => set("title", e.target.value)} />
+        </div>
+        <div style={S.group}>
+          <label style={S.label}>Amount ({cur.code})</label>
+          <div style={{ position: "relative" }}>
+            <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#6B7280", fontSize: 15 }}>{cur.symbol}</span>
+            <input style={{ ...S.input, paddingLeft: cur.symbol.length > 1 ? 38 : 28 }} type="number" placeholder="0.00" min="0" step="0.01" value={form.amount} onChange={(e) => set("amount", e.target.value)} />
+          </div>
+        </div>
+        <div style={S.group}>
+          <label style={S.label}>Category</label>
+          <div style={S.catGrid}>
+            {CATEGORIES.map((c) => (
+              <button key={c.id} style={S.catChip(form.category === c.id, c.color)} onClick={() => set("category", c.id)}>
+                {c.icon} {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {(isAdmin || members.length > 1) && (
+          <div style={S.group}>
+            <label style={S.label}>Paid by</label>
+            <div style={S.memberRow}>
+              {members.map((m) => (
+                <button key={m.id} style={S.memberChip(form.userId === m.id, m.color)} onClick={() => set("userId", m.id)}>
+                  <Avatar user={m} size={20} />
+                  {m.name.split(" ")[0]}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        <div style={S.group}>
+          <label style={S.label}>Date</label>
+          <input style={S.input} type="date" value={form.date} onChange={(e) => set("date", e.target.value)} />
+        </div>
+        <div style={S.group}>
+          <label style={S.label}>Note (optional)</label>
+          <input style={S.input} placeholder="Add a note…" value={form.note} onChange={(e) => set("note", e.target.value)} />
+        </div>
+
+        <button style={S.saveBtn} onClick={save}>{initial?.id ? "Save Changes" : "Add Expense"}</button>
+        <button style={S.cancelBtn} onClick={onClose}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── INVITE MEMBER MODAL ──────────────────────────────────────────────────────
+
+function InviteModal({ onClose, onInvite, users, group }) {
+  const [form, setForm] = React.useState({ name: "", email: "", role: "member" });
+  const [error, setError] = React.useState("");
+
+  function invite() {
+    if (!form.name.trim()) { setError("Enter a name."); return; }
+    if (!form.email.includes("@")) { setError("Enter a valid email."); return; }
+    if (users.find((u) => u.email.toLowerCase() === form.email.toLowerCase())) { setError("This email is already registered."); return; }
+    const newUser = {
+      id: "u" + Date.now(), name: form.name.trim(), email: form.email.toLowerCase(),
+      password: "password123", avatar: initials(form.name.trim()),
+      color: MEMBER_COLORS[users.length % MEMBER_COLORS.length], role: form.role,
+    };
+    onInvite(newUser);
+    onClose();
+  }
+
+  const S = {
+    overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, backdropFilter: "blur(4px)", padding: 20 },
+    card: { background: "#1A1D27", borderRadius: 24, padding: 28, width: "100%", maxWidth: 400, border: "1px solid #252836" },
+    title: { fontSize: 18, fontWeight: 700, color: "#E8E9F0", marginBottom: 6 },
+    sub: { fontSize: 13, color: "#6B7280", marginBottom: 20 },
+    label: { fontSize: 11, color: "#6B7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, display: "block" },
+    input: { width: "100%", background: "#0F1117", border: "1.5px solid #252836", borderRadius: 12, padding: "12px 14px", color: "#E8E9F0", fontSize: 15, fontFamily: "inherit", outline: "none", boxSizing: "border-box", marginBottom: 16 },
+    roleRow: { display: "flex", gap: 8, marginBottom: 20 },
+    roleChip: (a) => ({ flex: 1, padding: "10px 0", textAlign: "center", borderRadius: 12, border: `1.5px solid ${a ? "#7C5CFC" : "#252836"}`, background: a ? "#7C5CFC22" : "#0F1117", color: a ? "#7C5CFC" : "#6B7280", fontWeight: a ? 600 : 400, fontSize: 13, cursor: "pointer" }),
+    invBtn: { width: "100%", padding: 14, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", borderRadius: 13, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(124,92,252,0.35)" },
+    cancelBtn: { width: "100%", padding: 13, background: "transparent", border: "1.5px solid #252836", borderRadius: 13, color: "#6B7280", fontSize: 14, cursor: "pointer", marginTop: 10 },
+    error: { background: "#FF6B6B22", border: "1px solid #FF6B6B44", borderRadius: 10, padding: "10px 14px", color: "#FF6B6B", fontSize: 13, marginBottom: 16 },
+  };
+
+  return (
+    <div style={S.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div style={S.card}>
+        <div style={S.title}>Invite Family Member</div>
+        <div style={S.sub}>They'll get access to the {group.name} group.</div>
+        {error && <div style={S.error}>⚠️ {error}</div>}
+        <label style={S.label}>Full Name</label>
+        <input style={S.input} placeholder="Name" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
+        <label style={S.label}>Email</label>
+        <input style={S.input} placeholder="email@example.com" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
+        <label style={S.label}>Role</label>
+        <div style={S.roleRow}>
+          <button style={S.roleChip(form.role === "member")} onClick={() => setForm((p) => ({ ...p, role: "member" }))}>👤 Member</button>
+          <button style={S.roleChip(form.role === "admin")} onClick={() => setForm((p) => ({ ...p, role: "admin" }))}>👑 Admin</button>
+        </div>
+        <button style={S.invBtn} onClick={invite}>Send Invite →</button>
+        <button style={S.cancelBtn} onClick={onClose}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── GROUP SETTINGS MODAL ──────────────────────────────────────────────────────
+
+function GroupSettingsModal({ onClose, onSave, group }) {
+  const [name, setName] = React.useState(group.name);
+  const [budget, setBudget] = React.useState(String(group.budget));
+  const [currency, setCurrency] = React.useState(group.currency);
+
+  const S = {
+    overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, backdropFilter: "blur(4px)", padding: 20 },
+    card: { background: "#1A1D27", borderRadius: 24, padding: 28, width: "100%", maxWidth: 400, border: "1px solid #252836" },
+    title: { fontSize: 18, fontWeight: 700, color: "#E8E9F0", marginBottom: 6 },
+    sub: { fontSize: 13, color: "#6B7280", marginBottom: 20 },
+    label: { fontSize: 11, color: "#6B7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, display: "block" },
+    input: { width: "100%", background: "#0F1117", border: "1.5px solid #252836", borderRadius: 12, padding: "12px 14px", color: "#E8E9F0", fontSize: 15, fontFamily: "inherit", outline: "none", boxSizing: "border-box", marginBottom: 16 },
+    saveBtn: { width: "100%", padding: 14, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", borderRadius: 13, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(124,92,252,0.35)" },
+    cancelBtn: { width: "100%", padding: 13, background: "transparent", border: "1.5px solid #252836", borderRadius: 13, color: "#6B7280", fontSize: 14, cursor: "pointer", marginTop: 10 },
+    note: { fontSize: 11, color: "#6B7280", marginTop: -8, marginBottom: 16, lineHeight: 1.5 },
+  };
+
+  function save() {
+    const b = parseFloat(budget);
+    onSave({ name: name.trim() || group.name, budget: isNaN(b) || b <= 0 ? group.budget : b, currency });
+  }
+
+  return (
+    <div style={S.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div style={S.card}>
+        <div style={S.title}>Group Settings</div>
+        <div style={S.sub}>Manage your family group's details.</div>
+
+        <label style={S.label}>Group Name</label>
+        <input style={S.input} value={name} onChange={(e) => setName(e.target.value)} />
+
+        <label style={S.label}>Monthly Budget</label>
+        <input style={S.input} type="number" min="0" step="1" value={budget} onChange={(e) => setBudget(e.target.value)} />
+
+        <label style={S.label}>Currency</label>
+        <select style={{ ...S.input, appearance: "none", cursor: "pointer" }} value={currency} onChange={(e) => setCurrency(e.target.value)}>
+          {CURRENCIES.map((c) => (
+            <option key={c.code} value={c.code}>{c.flag} {c.code} — {c.name} ({c.symbol})</option>
+          ))}
+        </select>
+        <div style={S.note}>Changing currency updates how all amounts are displayed across the app. Existing entries keep their numeric value.</div>
+
+        <button style={S.saveBtn} onClick={save}>Save Settings</button>
+        <button style={S.cancelBtn} onClick={onClose}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+
+
+function App() {
+  const [users,    setUsers]    = React.useState(SEED_USERS);
+  const [group,    setGroup]    = React.useState(SEED_GROUP);
+  const [expenses, setExpenses] = React.useState(SEED_EXPENSES);
+  const [currentUser, setCurrentUser] = React.useState(null);
+  const [activeTab,   setActiveTab]   = React.useState("dashboard");
+  const [showExpModal,  setShowExpModal]  = React.useState(false);
+  const [showInvModal,  setShowInvModal]  = React.useState(false);
+  const [showSettingsModal, setShowSettingsModal] = React.useState(false);
+  const [editExpense,   setEditExpense]   = React.useState(null);
+  const [deleteId,      setDeleteId]      = React.useState(null);
+  const [filter,        setFilter]        = React.useState("all");
+  const [memberFilter,  setMemberFilter]  = React.useState("all");
+  const [search,        setSearch]        = React.useState("");
+  const [showProfileMenu, setShowProfileMenu] = React.useState(false);
+  const [toast, setToast] = React.useState(null);
+
+  const isAdmin = currentUser?.role === "admin";
+  const members = React.useMemo(() => users.filter((u) => group.members.includes(u.id)), [users, group]);
+
+  const groupExpenses = React.useMemo(() => expenses.filter((e) => e.groupId === group.id), [expenses, group]);
+
+  const filtered = React.useMemo(() => {
+    let list = groupExpenses;
+    if (filter !== "all") list = list.filter((e) => e.category === filter);
+    if (memberFilter !== "all") list = list.filter((e) => e.userId === memberFilter);
+    if (search.trim()) list = list.filter((e) => e.title.toLowerCase().includes(search.toLowerCase()));
+    return list.sort((a, b) => (a.date < b.date ? 1 : -1));
+  }, [groupExpenses, filter, memberFilter, search]);
+
+  const totalSpent = React.useMemo(() => groupExpenses.reduce((s, e) => s + e.amount, 0), [groupExpenses]);
+  const remaining  = group.budget - totalSpent;
+
+  const byMember = React.useMemo(() => members.map((m) => ({
+    ...m,
+    total: groupExpenses.filter((e) => e.userId === m.id).reduce((s, e) => s + e.amount, 0),
+    count: groupExpenses.filter((e) => e.userId === m.id).length,
+  })).sort((a, b) => b.total - a.total), [members, groupExpenses]);
+
+  const byCategory = React.useMemo(() => {
+    const map = {};
+    groupExpenses.forEach((e) => { map[e.category] = (map[e.category] || 0) + e.amount; });
+    return CATEGORIES.map((c) => ({ ...c, total: map[c.id] || 0 })).filter((c) => c.total > 0).sort((a, b) => b.total - a.total);
+  }, [groupExpenses]);
+
+  function showToast(msg) { setToast(msg); setTimeout(() => setToast(null), 2800); }
+
+  function handleLogin(u) { setCurrentUser(u); }
+
+  function handleRegister(u, currency) {
+    setUsers((p) => [...p, u]);
+    setGroup((g) => ({ ...g, members: [...g.members, u.id], currency: currency || g.currency }));
+    setCurrentUser(u);
+  }
+
+  function handleInvite(u) {
+    setUsers((p) => [...p, u]);
+    setGroup((g) => ({ ...g, members: [...g.members, u.id] }));
+    showToast(`${u.name} added to ${group.name}!`);
+  }
+
+  function saveExpense(data) {
+    if (data.id) {
+      setExpenses((p) => p.map((e) => (e.id === data.id ? { ...e, ...data } : e)));
+      showToast("Expense updated.");
+    } else {
+      setExpenses((p) => [{ id: Date.now(), groupId: group.id, ...data }, ...p]);
+      showToast("Expense added.");
+    }
+    setShowExpModal(false);
+    setEditExpense(null);
+  }
+
+  function deleteExpense(id) {
+    setExpenses((p) => p.filter((e) => e.id !== id));
+    setDeleteId(null);
+    showToast("Expense deleted.");
+  }
+
+  function openAdd() { setEditExpense(null); setShowExpModal(true); }
+  function openEdit(e) { setEditExpense(e); setShowExpModal(true); }
+
+  if (!currentUser) {
+    return <AuthScreen users={users} onLogin={handleLogin} onRegister={handleRegister} />;
+  }
+
+  const maxMemberTotal = byMember[0]?.total || 1;
+  const maxCatTotal    = byCategory[0]?.total || 1;
+
+  const S = {
+    root:     { minHeight: "100vh", background: "#0F1117", color: "#E8E9F0", fontFamily: "'Inter',system-ui,sans-serif", display: "flex", flexDirection: "column", maxWidth: 480, margin: "0 auto", position: "relative" },
+    header:   { padding: "20px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "center" },
+    headerLeft: { display: "flex", flexDirection: "column" },
+    brandRow: { display: "flex", alignItems: "center", gap: 8 },
+    brand:    { fontSize: 18, fontWeight: 800, color: "#E8E9F0", letterSpacing: "-0.5px" },
+    groupBadge: { fontSize: 11, color: "#7C5CFC", fontWeight: 600, background: "#7C5CFC22", padding: "2px 8px", borderRadius: 20, border: "1px solid #7C5CFC44" },
+    headerSub:  { fontSize: 11, color: "#6B7280", marginTop: 3 },
+    headerRight: { display: "flex", alignItems: "center", gap: 10 },
+    addBtn:   { width: 42, height: 42, borderRadius: 13, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", color: "#fff", fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 18px rgba(124,92,252,0.4)" },
+    profileWrap: { position: "relative" },
+    tabs:     { display: "flex", padding: "14px 20px 0", gap: 4, overflowX: "auto" },
+    tab:      (a) => ({ flexShrink: 0, padding: "8px 14px", borderRadius: 10, border: "none", background: a ? "#1A1D27" : "transparent", color: a ? "#7C5CFC" : "#6B7280", fontWeight: a ? 600 : 400, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }),
+    scroll:   { flex: 1, overflowY: "auto", padding: "16px 20px 100px" },
+    card:     { background: "#1A1D27", borderRadius: 20, padding: 20, marginBottom: 16, border: "1px solid #252836" },
+    sectionTitle: { fontSize: 11, fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.9, marginBottom: 14 },
+    statsRow: { display: "flex", gap: 10, marginBottom: 16 },
+    statCard: (c) => ({ flex: 1, background: "#1A1D27", borderRadius: 16, padding: "14px 14px", border: `1px solid ${c}22` }),
+    statLabel: { fontSize: 10, color: "#6B7280", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 },
+    statVal:  (c) => ({ fontSize: 18, fontWeight: 700, color: c, fontVariantNumeric: "tabular-nums" }),
+    txItem:   { display: "flex", alignItems: "center", gap: 10, padding: "12px 0" },
+    txIcon:   (c) => ({ width: 40, height: 40, borderRadius: 12, background: c + "22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, flexShrink: 0 }),
+    txInfo:   { flex: 1, minWidth: 0 },
+    txTitle:  { fontSize: 14, fontWeight: 500, color: "#E8E9F0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+    txMeta:   { fontSize: 11, color: "#6B7280", marginTop: 2, display: "flex", alignItems: "center", gap: 4 },
+    txAmount: { fontSize: 14, fontWeight: 700, color: "#FF6B6B", fontVariantNumeric: "tabular-nums" },
+    iconBtn:  (c) => ({ width: 28, height: 28, borderRadius: 8, background: c + "18", border: "none", color: c, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }),
+    searchBar: { display: "flex", alignItems: "center", background: "#1A1D27", borderRadius: 13, padding: "0 14px", marginBottom: 12, border: "1px solid #252836" },
+    searchInput: { flex: 1, background: "none", border: "none", outline: "none", color: "#E8E9F0", fontSize: 14, padding: "11px 8px", fontFamily: "inherit" },
+    filterRow: { display: "flex", gap: 7, marginBottom: 14, overflowX: "auto", paddingBottom: 2 },
+    chip:     (a, c) => ({ flexShrink: 0, padding: "5px 11px", borderRadius: 20, border: `1.5px solid ${a ? c : "#252836"}`, background: a ? c + "22" : "transparent", color: a ? c : "#6B7280", fontSize: 11, fontWeight: a ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }),
+    dateLabel: { fontSize: 11, fontWeight: 700, color: "#6B7280", marginBottom: 8, marginTop: 4 },
+    memberCard: { display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid #1E2130" },
+    barTrack:  { height: 4, background: "#252836", borderRadius: 4, overflow: "hidden", marginTop: 5, flex: 1 },
+    barFill:   (c, p) => ({ height: "100%", width: `${p * 100}%`, background: c, borderRadius: 4, transition: "width 0.6s" }),
+    // Profile menu
+    profileMenu: { position: "absolute", top: 50, right: 0, background: "#1A1D27", border: "1px solid #252836", borderRadius: 16, padding: 8, minWidth: 200, zIndex: 50, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" },
+    menuItem: (danger) => ({ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, cursor: "pointer", background: "none", border: "none", width: "100%", textAlign: "left", color: danger ? "#FF6B6B" : "#E8E9F0", fontSize: 13, fontFamily: "inherit" }),
+    // Toast
+    toast: { position: "fixed", bottom: 90, left: "50%", transform: "translateX(-50%)", background: "#1A1D27", border: "1px solid #252836", borderRadius: 12, padding: "10px 18px", fontSize: 13, color: "#E8E9F0", zIndex: 300, boxShadow: "0 4px 20px rgba(0,0,0,0.3)", whiteSpace: "nowrap" },
+    // Empty
+    empty: { textAlign: "center", padding: "40px 20px", color: "#6B7280" },
+    // Delete modal
+    delOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 20 },
+    delCard: { background: "#1A1D27", borderRadius: 20, padding: 24, width: "100%", maxWidth: 320, border: "1px solid #252836" },
+  };
+
+  return (
+    <div style={S.root}>
+      {/* ── Header ── */}
+      <div style={S.header}>
+        <div style={S.headerLeft}>
+          <div style={S.brandRow}>
+            <span style={{ fontSize: 18 }}>💳</span>
+            <span style={S.brand}>Spendwise</span>
+            <span style={S.groupBadge}>{group.name}</span>
+          </div>
+          <div style={S.headerSub}>June 2026 · {members.length} members</div>
+        </div>
+        <div style={S.headerRight}>
+          <button style={S.addBtn} onClick={openAdd} title="Add expense">＋</button>
+          <div style={S.profileWrap}>
+            <div style={{ cursor: "pointer" }} onClick={() => setShowProfileMenu((p) => !p)}>
+              <Avatar user={currentUser} size={38} />
+            </div>
+            {showProfileMenu && (
+              <div style={S.profileMenu}>
+                <div style={{ padding: "8px 12px 12px", borderBottom: "1px solid #252836", marginBottom: 4 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{currentUser.name}</div>
+                  <div style={{ fontSize: 11, color: "#6B7280" }}>{currentUser.email}</div>
+                  <div style={{ fontSize: 10, color: currentUser.color, fontWeight: 600, marginTop: 3, textTransform: "uppercase" }}>{currentUser.role}</div>
+                </div>
+                {isAdmin && (
+                  <button style={S.menuItem(false)} onClick={() => { setShowInvModal(true); setShowProfileMenu(false); }}>
+                    👥 Invite Member
+                  </button>
+                )}
+                {isAdmin && (
+                  <button style={S.menuItem(false)} onClick={() => { setShowSettingsModal(true); setShowProfileMenu(false); }}>
+                    ⚙️ Group Settings
+                  </button>
+                )}
+                <button style={S.menuItem(false)} onClick={() => { setActiveTab("members"); setShowProfileMenu(false); }}>
+                  👨‍👩‍👧‍👦 Family Members
+                </button>
+                <button style={S.menuItem(true)} onClick={() => { setCurrentUser(null); setShowProfileMenu(false); }}>
+                  🚪 Sign Out
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Tabs ── */}
+      <div style={S.tabs}>
+        {[["dashboard","📊 Dashboard"],["transactions","📋 Expenses"],["members","👨‍👩‍👧 Family"],["analytics","📈 Analytics"]].map(([id,lbl]) => (
+          <button key={id} style={S.tab(activeTab === id)} onClick={() => { setActiveTab(id); setShowProfileMenu(false); }}>{lbl}</button>
+        ))}
+      </div>
+
+      <div style={S.scroll} onClick={() => setShowProfileMenu(false)}>
+
+        {/* ══════════════ DASHBOARD ══════════════ */}
+        {activeTab === "dashboard" && (
+          <>
+            {/* Budget gauge */}
+            <div style={{ ...S.card, textAlign: "center" }}>
+              <div style={{ fontSize: 11, color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4 }}>Family Budget</div>
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <RadialGauge spent={totalSpent} budget={group.budget} currency={group.currency} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-around", marginTop: 8 }}>
+                {[["Spent","#FF6B6B",totalSpent],["Remaining",remaining>=0?"#22D3A5":"#FF6B6B",Math.abs(remaining)],["Budget","#7C5CFC",group.budget]].map(([l,c,v]) => (
+                  <div key={l}>
+                    <div style={{ fontSize: 10, color: "#6B7280" }}>{l}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: c }}>{money(v, group.currency)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div style={S.statsRow}>
+              <div style={S.statCard("#22D3A5")}>
+                <div style={S.statLabel}>Transactions</div>
+                <div style={S.statVal("#22D3A5")}>{groupExpenses.length}</div>
+              </div>
+              <div style={S.statCard("#FBBF24")}>
+                <div style={S.statLabel}>Members</div>
+                <div style={S.statVal("#FBBF24")}>{members.length}</div>
+              </div>
+              <div style={S.statCard("#F472B6")}>
+                <div style={S.statLabel}>Top spender</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#F472B6", marginTop: 4 }}>{byMember[0]?.name.split(" ")[0] || "—"}</div>
+              </div>
+            </div>
+
+            {/* Member spending overview */}
+            <div style={S.card}>
+              <div style={S.sectionTitle}>Member Spending</div>
+              {byMember.map((m) => (
+                <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                  <Avatar user={m} size={34} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: 13, fontWeight: 500 }}>{m.name.split(" ")[0]}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: m.color }}>{money(m.total, group.currency)}</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ ...S.barTrack, marginTop: 4 }}>
+                        <div style={S.barFill(m.color, m.total / maxMemberTotal)} />
+                      </div>
+                      <span style={{ fontSize: 10, color: "#6B7280", flexShrink: 0 }}>{m.count} txn</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Recent */}
+            <div style={S.sectionTitle}>Recent Expenses</div>
+            {groupExpenses.slice(0, 5).map((e) => {
+              const cat  = getCat(e.category);
+              const user = users.find((u) => u.id === e.userId);
+              return (
+                <div key={e.id} style={{ ...S.txItem, borderBottom: "1px solid #1A1D27" }}>
+                  <div style={S.txIcon(cat.color)}>{cat.icon}</div>
+                  <div style={S.txInfo}>
+                    <div style={S.txTitle}>{e.title}</div>
+                    <div style={S.txMeta}>
+                      {user && <Avatar user={user} size={14} />}
+                      <span>{user?.name.split(" ")[0]} · {formatDateLabel(e.date)}</span>
+                    </div>
+                  </div>
+                  <div style={S.txAmount}>-{money(e.amount, group.currency)}</div>
+                </div>
+              );
+            })}
+            {groupExpenses.length > 5 && (
+              <button onClick={() => setActiveTab("transactions")} style={{ width: "100%", padding: 11, marginTop: 8, background: "#1A1D27", border: "1.5px solid #252836", borderRadius: 12, color: "#7C5CFC", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                View all {groupExpenses.length} expenses →
+              </button>
+            )}
+          </>
+        )}
+
+        {/* ══════════════ TRANSACTIONS ══════════════ */}
+        {activeTab === "transactions" && (
+          <>
+            <div style={S.searchBar}>
+              <span style={{ fontSize: 14, color: "#6B7280" }}>🔍</span>
+              <input style={S.searchInput} placeholder="Search expenses…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              {search && <button onClick={() => setSearch("")} style={{ background: "none", border: "none", color: "#6B7280", cursor: "pointer" }}>✕</button>}
+            </div>
+
+            {/* Member filter */}
+            <div style={S.filterRow}>
+              <button style={S.chip(memberFilter === "all", "#7C5CFC")} onClick={() => setMemberFilter("all")}>Everyone</button>
+              {members.map((m) => (
+                <button key={m.id} style={S.chip(memberFilter === m.id, m.color)} onClick={() => setMemberFilter(memberFilter === m.id ? "all" : m.id)}>
+                  {m.name.split(" ")[0]}
+                </button>
+              ))}
+            </div>
+
+            {/* Category filter */}
+            <div style={S.filterRow}>
+              <button style={S.chip(filter === "all", "#6B7280")} onClick={() => setFilter("all")}>All</button>
+              {CATEGORIES.map((c) => (
+                <button key={c.id} style={S.chip(filter === c.id, c.color)} onClick={() => setFilter(filter === c.id ? "all" : c.id)}>
+                  {c.icon} {c.label}
+                </button>
+              ))}
+            </div>
+
+            {filtered.length === 0 ? (
+              <div style={S.empty}>
+                <div style={{ fontSize: 40, marginBottom: 10 }}>🔍</div>
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>No expenses found</div>
+                <div style={{ fontSize: 13 }}>Try adjusting your filters.</div>
+              </div>
+            ) : groupByDate(filtered).map(([date, items]) => (
+              <div key={date}>
+                <div style={S.dateLabel}>{formatDateLabel(date)}</div>
+                <div style={S.card}>
+                  {items.map((e, i) => {
+                    const cat  = getCat(e.category);
+                    const user = users.find((u) => u.id === e.userId);
+                    const canEdit = isAdmin || e.userId === currentUser.id;
+                    return (
+                      <div key={e.id} style={{ ...S.txItem, borderBottom: i < items.length - 1 ? "1px solid #1E2130" : "none" }}>
+                        <div style={S.txIcon(cat.color)}>{cat.icon}</div>
+                        <div style={S.txInfo}>
+                          <div style={S.txTitle}>{e.title}</div>
+                          <div style={S.txMeta}>
+                            {user && <Avatar user={user} size={13} />}
+                            <span>{user?.name.split(" ")[0]}</span>
+                            {e.note && <span>· {e.note}</span>}
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                          <div style={S.txAmount}>-{money(e.amount, group.currency)}</div>
+                          {canEdit && (
+                            <div style={{ display: "flex", gap: 4 }}>
+                              <button style={S.iconBtn("#7C5CFC")} onClick={() => openEdit(e)}>✏️</button>
+                              <button style={S.iconBtn("#FF6B6B")} onClick={() => setDeleteId(e.id)}>🗑️</button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* ══════════════ MEMBERS ══════════════ */}
+        {activeTab === "members" && (
+          <>
+            {isAdmin && (
+              <button style={{ width: "100%", padding: 14, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", borderRadius: 14, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 16, boxShadow: "0 4px 18px rgba(124,92,252,0.35)" }}
+                onClick={() => setShowInvModal(true)}>
+                + Invite Family Member
+              </button>
+            )}
+
+            {byMember.map((m) => {
+              const myExpenses = groupExpenses.filter((e) => e.userId === m.id).sort((a, b) => (a.date < b.date ? 1 : -1));
+              return (
+                <div key={m.id} style={S.card}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                    <Avatar user={m} size={46} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 16, fontWeight: 700 }}>{m.name}</span>
+                        <span style={{ fontSize: 10, color: m.color, fontWeight: 600, background: m.color + "22", padding: "2px 8px", borderRadius: 20 }}>{m.role}</span>
+                        {m.id === currentUser.id && <span style={{ fontSize: 10, color: "#6B7280" }}>(you)</span>}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>{m.email}</div>
+                    </div>
+                  </div>
+
+                  {/* Member stats row */}
+                  <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                    {[["Total Spent", m.color, `${money(m.total, group.currency)}`],["Transactions","#6B7280",m.count],["Share","#FBBF24",totalSpent > 0 ? `${Math.round((m.total/totalSpent)*100)}%` : "0%"]].map(([l,c,v]) => (
+                      <div key={l} style={{ flex: 1, background: "#0F1117", borderRadius: 12, padding: "10px 12px", border: `1px solid ${c}22` }}>
+                        <div style={{ fontSize: 9, color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{l}</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: c }}>{v}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Recent expenses */}
+                  <div style={{ fontSize: 10, color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 8 }}>Recent Expenses</div>
+                  {myExpenses.length === 0 ? (
+                    <div style={{ fontSize: 13, color: "#6B7280", textAlign: "center", padding: "12px 0" }}>No expenses yet</div>
+                  ) : myExpenses.slice(0, 3).map((e, i) => {
+                    const cat = getCat(e.category);
+                    return (
+                      <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: i > 0 ? "1px solid #1E2130" : "none" }}>
+                        <div style={{ ...S.txIcon(cat.color), width: 32, height: 32, borderRadius: 10, fontSize: 14 }}>{cat.icon}</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 500 }}>{e.title}</div>
+                          <div style={{ fontSize: 10, color: "#6B7280" }}>{formatDateLabel(e.date)}</div>
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#FF6B6B" }}>-{money(e.amount, group.currency)}</div>
+                      </div>
+                    );
+                  })}
+                  {myExpenses.length > 3 && (
+                    <div style={{ fontSize: 12, color: "#7C5CFC", textAlign: "center", paddingTop: 8, cursor: "pointer" }}
+                      onClick={() => { setMemberFilter(m.id); setActiveTab("transactions"); }}>
+                      +{myExpenses.length - 3} more →
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </>
+        )}
+
+        {/* ══════════════ ANALYTICS ══════════════ */}
+        {activeTab === "analytics" && (
+          <>
+            {/* Top summary */}
+            <div style={S.statsRow}>
+              <div style={S.statCard("#7C5CFC")}>
+                <div style={S.statLabel}>Total Spent</div>
+                <div style={S.statVal("#7C5CFC")}>{money(totalSpent, group.currency)}</div>
+              </div>
+              <div style={S.statCard(remaining >= 0 ? "#22D3A5" : "#FF6B6B")}>
+                <div style={S.statLabel}>{remaining >= 0 ? "Remaining" : "Over budget"}</div>
+                <div style={S.statVal(remaining >= 0 ? "#22D3A5" : "#FF6B6B")}>{money(Math.abs(remaining), group.currency)}</div>
+              </div>
+            </div>
+
+            {/* Per-member breakdown */}
+            <div style={S.card}>
+              <div style={S.sectionTitle}>Spending by Member</div>
+              {byMember.map((m) => (
+                <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                  <Avatar user={m} size={32} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: 13 }}>{m.name.split(" ")[0]}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: m.color }}>{money(m.total, group.currency)}</span>
+                    </div>
+                    <div style={S.barTrack}>
+                      <div style={S.barFill(m.color, m.total / maxMemberTotal)} />
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 11, color: "#6B7280", width: 28, textAlign: "right" }}>
+                    {totalSpent > 0 ? `${Math.round((m.total / totalSpent) * 100)}%` : "0%"}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Category breakdown */}
+            <div style={S.card}>
+              <div style={S.sectionTitle}>Spending by Category</div>
+              {byCategory.length === 0 ? (
+                <div style={{ color: "#6B7280", fontSize: 13, textAlign: "center", padding: "16px 0" }}>No data yet</div>
+              ) : byCategory.map((c) => (
+                <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 10, background: c.color + "22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0 }}>{c.icon}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: 13 }}>{c.label}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: c.color }}>{money(c.total, group.currency)}</span>
+                    </div>
+                    <div style={S.barTrack}>
+                      <div style={S.barFill(c.color, c.total / maxCatTotal)} />
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 11, color: "#6B7280", width: 28, textAlign: "right" }}>
+                    {totalSpent > 0 ? `${Math.round((c.total / totalSpent) * 100)}%` : "0%"}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Fair share analysis */}
+            <div style={S.card}>
+              <div style={S.sectionTitle}>Fair Share Analysis</div>
+              <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 14 }}>Equal split of {money(totalSpent, group.currency)} among {members.length} members = {money(totalSpent / members.length, group.currency)} each</div>
+              {byMember.map((m) => {
+                const fairShare = totalSpent / members.length;
+                const diff = m.total - fairShare;
+                return (
+                  <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #1E2130" }}>
+                    <Avatar user={m} size={30} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{m.name.split(" ")[0]}</div>
+                      <div style={{ fontSize: 11, color: "#6B7280" }}>paid {money(m.total, group.currency)}</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: diff >= 0 ? "#22D3A5" : "#FF6B6B" }}>
+                        {diff >= 0 ? "+" : ""}{money(diff, group.currency)}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#6B7280" }}>{diff >= 0 ? "overpaid" : "underpaid"}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ── Modals ── */}
+      {showExpModal && (
+        <ExpenseModal
+          onClose={() => { setShowExpModal(false); setEditExpense(null); }}
+          onSave={saveExpense}
+          initial={editExpense}
+          members={members}
+          currentUserId={currentUser.id}
+          isAdmin={isAdmin}
+          currency={group.currency}
+        />
+      )}
+
+      {showInvModal && (
+        <InviteModal onClose={() => setShowInvModal(false)} onInvite={handleInvite} users={users} group={group} />
+      )}
+
+      {showSettingsModal && (
+        <GroupSettingsModal
+          onClose={() => setShowSettingsModal(false)}
+          group={group}
+          onSave={(updates) => { setGroup((g) => ({ ...g, ...updates })); setShowSettingsModal(false); showToast("Group settings updated."); }}
+        />
+      )}
+
+      {deleteId && (
+        <div style={S.delOverlay}>
+          <div style={S.delCard}>
+            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>Delete expense?</div>
+            <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20 }}>This cannot be undone.</div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button style={{ flex: 1, padding: 13, background: "#1E2130", border: "1.5px solid #252836", borderRadius: 12, color: "#E8E9F0", fontWeight: 500, cursor: "pointer" }} onClick={() => setDeleteId(null)}>Cancel</button>
+              <button style={{ flex: 1, padding: 13, background: "#FF6B6B22", border: "1.5px solid #FF6B6B", borderRadius: 12, color: "#FF6B6B", fontWeight: 700, cursor: "pointer" }} onClick={() => deleteExpense(deleteId)}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast notification */}
+      {toast && <div style={S.toast}>✓ {toast}</div>}
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+document.getElementById('splash').style.display = 'none';
+</script>
+</body>
+</html>
