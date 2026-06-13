@@ -76,12 +76,22 @@ const ZERO_DECIMAL = ["JPY"];
 // ─── Seed data ─────────────────────────────────────────────────────────────────
 
 const SEED_USERS = [
-  { id: "u1", name: "Alex Johnson",  email: "alex@family.com",  password: "password", avatar: "AJ", color: "#7C5CFC", role: "admin" },
-  { id: "u2", name: "Sam Johnson",   email: "sam@family.com",   password: "password", avatar: "SJ", color: "#22D3A5", role: "member" },
-  { id: "u3", name: "Jordan Johnson",email: "jordan@family.com",password: "password", avatar: "JJ", color: "#FF8C42", role: "member" },
+  { id: "u1", name: "Alex Johnson",  email: "alex@family.com",  password: "password", avatar: "AJ", color: "#7C5CFC" },
+  { id: "u2", name: "Sam Johnson",   email: "sam@family.com",   password: "password", avatar: "SJ", color: "#22D3A5" },
+  { id: "u3", name: "Jordan Johnson",email: "jordan@family.com",password: "password", avatar: "JJ", color: "#FF8C42" },
 ];
 
-const SEED_GROUP = { id: "g1", name: "Johnson Family", budget: 4000, members: ["u1","u2","u3"], currency: "USD" };
+// Each group now has its own member list with per-group roles
+const SEED_GROUPS = [
+  {
+    id: "g1", name: "Johnson Family", budget: 4000, currency: "USD",
+    members: [
+      { userId: "u1", role: "admin" },
+      { userId: "u2", role: "member" },
+      { userId: "u3", role: "member" },
+    ],
+  },
+];
 
 const SEED_EXPENSES = [
   { id: 1,  title: "Grocery run",    amount: 84.50,  category: "food",          date: "2026-06-11", note: "Weekly groceries", userId: "u1", groupId: "g1" },
@@ -209,7 +219,7 @@ function AuthScreen({ users, onLogin, onRegister }) {
     const newUser = {
       id: "u" + Date.now(), name: form.name.trim(), email: form.email.toLowerCase(),
       password: form.password, avatar: initials(form.name.trim()),
-      color: MEMBER_COLORS[users.length % MEMBER_COLORS.length], role: "member",
+      color: MEMBER_COLORS[users.length % MEMBER_COLORS.length],
     };
     onRegister(newUser, form.currency);
   }
@@ -392,9 +402,9 @@ function InviteModal({ onClose, onInvite, users, group }) {
     const newUser = {
       id: "u" + Date.now(), name: form.name.trim(), email: form.email.toLowerCase(),
       password: "password123", avatar: initials(form.name.trim()),
-      color: MEMBER_COLORS[users.length % MEMBER_COLORS.length], role: form.role,
+      color: MEMBER_COLORS[users.length % MEMBER_COLORS.length],
     };
-    onInvite(newUser);
+    onInvite(newUser, form.role);
     onClose();
   }
 
@@ -489,36 +499,72 @@ function GroupSettingsModal({ onClose, onSave, group }) {
 
 function App() {
   const [users,    setUsers]    = React.useState(SEED_USERS);
-  const [group,    setGroup]    = React.useState(SEED_GROUP);
+  const [groups,   setGroups]   = React.useState(SEED_GROUPS);
   const [expenses, setExpenses] = React.useState(SEED_EXPENSES);
   const [currentUser, setCurrentUser] = React.useState(null);
+  const [activeGroupId, setActiveGroupId] = React.useState(SEED_GROUPS[0]?.id || null);
   const [activeTab,   setActiveTab]   = React.useState("dashboard");
   const [showExpModal,  setShowExpModal]  = React.useState(false);
   const [showInvModal,  setShowInvModal]  = React.useState(false);
   const [showSettingsModal, setShowSettingsModal] = React.useState(false);
+  const [showCreateGroupModal, setShowCreateGroupModal] = React.useState(false);
+  const [showGroupSwitcher, setShowGroupSwitcher] = React.useState(false);
   const [editExpense,   setEditExpense]   = React.useState(null);
   const [deleteId,      setDeleteId]      = React.useState(null);
+  const [removeMemberId, setRemoveMemberId] = React.useState(null);
   const [filter,        setFilter]        = React.useState("all");
   const [memberFilter,  setMemberFilter]  = React.useState("all");
   const [search,        setSearch]        = React.useState("");
   const [showProfileMenu, setShowProfileMenu] = React.useState(false);
   const [toast, setToast] = React.useState(null);
 
-  const isAdmin = currentUser?.role === "admin";
-  const members = React.useMemo(() => users.filter((u) => group.members.includes(u.id)), [users, group]);
+  // Groups the current user belongs to
+  const myGroups = React.useMemo(
+    () => groups.filter((g) => currentUser && g.members.some((m) => m.userId === currentUser.id)),
+    [groups, currentUser]
+  );
 
-  const groupExpenses = React.useMemo(() => expenses.filter((e) => e.groupId === group.id), [expenses, group]);
+  // Ensure activeGroupId is valid for current user
+  React.useEffect(() => {
+    if (!currentUser) return;
+    if (!myGroups.find((g) => g.id === activeGroupId)) {
+      setActiveGroupId(myGroups[0]?.id || null);
+    }
+  }, [currentUser, myGroups, activeGroupId]);
+
+  const group = React.useMemo(() => groups.find((g) => g.id === activeGroupId) || null, [groups, activeGroupId]);
+
+  const isAdmin = React.useMemo(() => {
+    if (!group || !currentUser) return false;
+    const m = group.members.find((m) => m.userId === currentUser.id);
+    return m?.role === "admin";
+  }, [group, currentUser]);
+
+  const members = React.useMemo(() => {
+    if (!group) return [];
+    return group.members
+      .map((gm) => {
+        const u = users.find((u) => u.id === gm.userId);
+        return u ? { ...u, role: gm.role } : null;
+      })
+      .filter(Boolean);
+  }, [group, users]);
+
+  const groupExpenses = React.useMemo(
+    () => (group ? expenses.filter((e) => e.groupId === group.id) : []),
+    [expenses, group]
+  );
 
   const filtered = React.useMemo(() => {
     let list = groupExpenses;
     if (filter !== "all") list = list.filter((e) => e.category === filter);
     if (memberFilter !== "all") list = list.filter((e) => e.userId === memberFilter);
     if (search.trim()) list = list.filter((e) => e.title.toLowerCase().includes(search.toLowerCase()));
-    return list.sort((a, b) => (a.date < b.date ? 1 : -1));
+    return [...list].sort((a, b) => (a.date < b.date ? 1 : -1));
   }, [groupExpenses, filter, memberFilter, search]);
 
   const totalSpent = React.useMemo(() => groupExpenses.reduce((s, e) => s + e.amount, 0), [groupExpenses]);
-  const remaining  = group.budget - totalSpent;
+  const remaining  = (group?.budget || 0) - totalSpent;
 
   const byMember = React.useMemo(() => members.map((m) => ({
     ...m,
@@ -537,14 +583,25 @@ function App() {
   function handleLogin(u) { setCurrentUser(u); }
 
   function handleRegister(u, currency) {
+    const newGroupId = "g" + Date.now();
     setUsers((p) => [...p, u]);
-    setGroup((g) => ({ ...g, members: [...g.members, u.id], currency: currency || g.currency }));
+    setGroups((p) => [...p, {
+      id: newGroupId,
+      name: `${u.name.split(" ")[0]}'s Family`,
+      budget: 2000,
+      currency: currency || "USD",
+      members: [{ userId: u.id, role: "admin" }],
+    }]);
     setCurrentUser(u);
+    setActiveGroupId(newGroupId);
   }
 
-  function handleInvite(u) {
+  function handleInvite(u, role) {
     setUsers((p) => [...p, u]);
-    setGroup((g) => ({ ...g, members: [...g.members, u.id] }));
+    setGroups((p) => p.map((g) => g.id === group.id
+      ? { ...g, members: [...g.members, { userId: u.id, role: role || "member" }] }
+      : g
+    ));
     showToast(`${u.name} added to ${group.name}!`);
   }
 
@@ -569,8 +626,77 @@ function App() {
   function openAdd() { setEditExpense(null); setShowExpModal(true); }
   function openEdit(e) { setEditExpense(e); setShowExpModal(true); }
 
+  function createGroup(name, currency, budget) {
+    const newGroupId = "g" + Date.now();
+    setGroups((p) => [...p, {
+      id: newGroupId,
+      name: name || "New Family Group",
+      budget: budget || 2000,
+      currency: currency || "USD",
+      members: [{ userId: currentUser.id, role: "admin" }],
+    }]);
+    setActiveGroupId(newGroupId);
+    setActiveTab("dashboard");
+    showToast(`"${name}" group created!`);
+  }
+
+  function switchGroup(id) {
+    setActiveGroupId(id);
+    setShowGroupSwitcher(false);
+    setShowProfileMenu(false);
+    setActiveTab("dashboard");
+  }
+
+  // Change a member's role within the active group (promote/demote)
+  function setMemberRole(userId, role) {
+    setGroups((prev) => prev.map((g) => {
+      if (g.id !== group.id) return g;
+      return { ...g, members: g.members.map((m) => m.userId === userId ? { ...m, role } : m) };
+    }));
+    showToast("Role updated.");
+  }
+
+  // Remove a member from the active group (admin only, cannot remove self if last admin)
+  function removeMember(userId) {
+    const target = group.members.find((m) => m.userId === userId);
+    const adminCount = group.members.filter((m) => m.role === "admin").length;
+    if (target?.role === "admin" && adminCount <= 1) {
+      showToast("Can't remove the only admin.");
+      setRemoveMemberId(null);
+      return;
+    }
+    setGroups((prev) => prev.map((g) => {
+      if (g.id !== group.id) return g;
+      return { ...g, members: g.members.filter((m) => m.userId !== userId) };
+    }));
+    // Also remove their expenses in this group (optional: keep history instead)
+    setExpenses((prev) => prev.filter((e) => !(e.groupId === group.id && e.userId === userId)));
+    setRemoveMemberId(null);
+    const u = users.find((u) => u.id === userId);
+    showToast(`${u?.name || "Member"} removed from group.`);
+    if (userId === currentUser.id) {
+      // user removed themselves
+      setActiveGroupId(null);
+    }
+  }
+
+  function leaveGroup() {
+    removeMember(currentUser.id);
+  }
+
   if (!currentUser) {
     return <AuthScreen users={users} onLogin={handleLogin} onRegister={handleRegister} />;
+  }
+
+  // Edge case: user has no groups at all
+  if (!group) {
+    return (
+      <NoGroupScreen
+        currentUser={currentUser}
+        onCreateGroup={createGroup}
+        onSignOut={() => setCurrentUser(null)}
+      />
+    );
   }
 
   const maxMemberTotal = byMember[0]?.total || 1;
@@ -579,10 +705,10 @@ function App() {
   const S = {
     root:     { minHeight: "100vh", background: "#0F1117", color: "#E8E9F0", fontFamily: "'Inter',system-ui,sans-serif", display: "flex", flexDirection: "column", maxWidth: 480, margin: "0 auto", position: "relative" },
     header:   { padding: "20px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "center" },
-    headerLeft: { display: "flex", flexDirection: "column" },
+    headerLeft: { display: "flex", flexDirection: "column", flex: 1, minWidth: 0 },
     brandRow: { display: "flex", alignItems: "center", gap: 8 },
     brand:    { fontSize: 18, fontWeight: 800, color: "#E8E9F0", letterSpacing: "-0.5px" },
-    groupBadge: { fontSize: 11, color: "#7C5CFC", fontWeight: 600, background: "#7C5CFC22", padding: "2px 8px", borderRadius: 20, border: "1px solid #7C5CFC44" },
+    groupBadge: { fontSize: 11, color: "#7C5CFC", fontWeight: 600, background: "#7C5CFC22", padding: "2px 8px", borderRadius: 20, border: "1px solid #7C5CFC44", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, maxWidth: 180, overflow: "hidden" },
     headerSub:  { fontSize: 11, color: "#6B7280", marginTop: 3 },
     headerRight: { display: "flex", alignItems: "center", gap: 10 },
     addBtn:   { width: 42, height: 42, borderRadius: 13, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", color: "#fff", fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 18px rgba(124,92,252,0.4)" },
@@ -611,16 +737,16 @@ function App() {
     memberCard: { display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid #1E2130" },
     barTrack:  { height: 4, background: "#252836", borderRadius: 4, overflow: "hidden", marginTop: 5, flex: 1 },
     barFill:   (c, p) => ({ height: "100%", width: `${p * 100}%`, background: c, borderRadius: 4, transition: "width 0.6s" }),
-    // Profile menu
-    profileMenu: { position: "absolute", top: 50, right: 0, background: "#1A1D27", border: "1px solid #252836", borderRadius: 16, padding: 8, minWidth: 200, zIndex: 50, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" },
+    profileMenu: { position: "absolute", top: 50, right: 0, background: "#1A1D27", border: "1px solid #252836", borderRadius: 16, padding: 8, minWidth: 210, zIndex: 50, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" },
     menuItem: (danger) => ({ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, cursor: "pointer", background: "none", border: "none", width: "100%", textAlign: "left", color: danger ? "#FF6B6B" : "#E8E9F0", fontSize: 13, fontFamily: "inherit" }),
-    // Toast
     toast: { position: "fixed", bottom: 90, left: "50%", transform: "translateX(-50%)", background: "#1A1D27", border: "1px solid #252836", borderRadius: 12, padding: "10px 18px", fontSize: 13, color: "#E8E9F0", zIndex: 300, boxShadow: "0 4px 20px rgba(0,0,0,0.3)", whiteSpace: "nowrap" },
-    // Empty
     empty: { textAlign: "center", padding: "40px 20px", color: "#6B7280" },
-    // Delete modal
     delOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 20 },
     delCard: { background: "#1A1D27", borderRadius: 20, padding: 24, width: "100%", maxWidth: 320, border: "1px solid #252836" },
+    // Group switcher
+    switcherOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 150, backdropFilter: "blur(4px)" },
+    switcherSheet: { background: "#1A1D27", borderRadius: "24px 24px 0 0", padding: "24px 20px 36px", width: "100%", maxWidth: 480, border: "1px solid #252836", borderBottom: "none" },
+    groupRow: (active) => ({ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, marginBottom: 8, border: `1.5px solid ${active ? "#7C5CFC" : "#252836"}`, background: active ? "#7C5CFC18" : "#0F1117", cursor: "pointer" }),
   };
 
   return (
@@ -631,9 +757,15 @@ function App() {
           <div style={S.brandRow}>
             <span style={{ fontSize: 18 }}>💳</span>
             <span style={S.brand}>Spendwise</span>
-            <span style={S.groupBadge}>{group.name}</span>
           </div>
-          <div style={S.headerSub}>June 2026 · {members.length} members</div>
+          <div
+            style={{ ...S.groupBadge, marginTop: 6 }}
+            onClick={() => setShowGroupSwitcher(true)}
+          >
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.name}</span>
+            <span style={{ flexShrink: 0 }}>▾</span>
+          </div>
+          <div style={S.headerSub}>{members.length} members{myGroups.length > 1 ? ` · ${myGroups.length} groups` : ""}</div>
         </div>
         <div style={S.headerRight}>
           <button style={S.addBtn} onClick={openAdd} title="Add expense">＋</button>
@@ -646,7 +778,7 @@ function App() {
                 <div style={{ padding: "8px 12px 12px", borderBottom: "1px solid #252836", marginBottom: 4 }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{currentUser.name}</div>
                   <div style={{ fontSize: 11, color: "#6B7280" }}>{currentUser.email}</div>
-                  <div style={{ fontSize: 10, color: currentUser.color, fontWeight: 600, marginTop: 3, textTransform: "uppercase" }}>{currentUser.role}</div>
+                  <div style={{ fontSize: 10, color: currentUser.color, fontWeight: 600, marginTop: 3, textTransform: "uppercase" }}>{isAdmin ? "admin" : "member"} · {group.name}</div>
                 </div>
                 {isAdmin && (
                   <button style={S.menuItem(false)} onClick={() => { setShowInvModal(true); setShowProfileMenu(false); }}>
@@ -660,6 +792,9 @@ function App() {
                 )}
                 <button style={S.menuItem(false)} onClick={() => { setActiveTab("members"); setShowProfileMenu(false); }}>
                   👨‍👩‍👧‍👦 Family Members
+                </button>
+                <button style={S.menuItem(false)} onClick={() => { setShowGroupSwitcher(true); setShowProfileMenu(false); }}>
+                  🔄 Switch / Add Group
                 </button>
                 <button style={S.menuItem(true)} onClick={() => { setCurrentUser(null); setShowProfileMenu(false); }}>
                   🚪 Sign Out
@@ -682,7 +817,6 @@ function App() {
         {/* ══════════════ DASHBOARD ══════════════ */}
         {activeTab === "dashboard" && (
           <>
-            {/* Budget gauge */}
             <div style={{ ...S.card, textAlign: "center" }}>
               <div style={{ fontSize: 11, color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4 }}>Family Budget</div>
               <div style={{ display: "flex", justifyContent: "center" }}>
@@ -698,7 +832,6 @@ function App() {
               </div>
             </div>
 
-            {/* Stats */}
             <div style={S.statsRow}>
               <div style={S.statCard("#22D3A5")}>
                 <div style={S.statLabel}>Transactions</div>
@@ -714,7 +847,6 @@ function App() {
               </div>
             </div>
 
-            {/* Member spending overview */}
             <div style={S.card}>
               <div style={S.sectionTitle}>Member Spending</div>
               {byMember.map((m) => (
@@ -736,9 +868,14 @@ function App() {
               ))}
             </div>
 
-            {/* Recent */}
             <div style={S.sectionTitle}>Recent Expenses</div>
-            {groupExpenses.slice(0, 5).map((e) => {
+            {groupExpenses.length === 0 ? (
+              <div style={S.empty}>
+                <div style={{ fontSize: 40, marginBottom: 10 }}>🧾</div>
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>No expenses yet</div>
+                <div style={{ fontSize: 13 }}>Tap the + button to add your first expense.</div>
+              </div>
+            ) : groupExpenses.slice(0, 5).map((e) => {
               const cat  = getCat(e.category);
               const user = users.find((u) => u.id === e.userId);
               return (
@@ -772,7 +909,6 @@ function App() {
               {search && <button onClick={() => setSearch("")} style={{ background: "none", border: "none", color: "#6B7280", cursor: "pointer" }}>✕</button>}
             </div>
 
-            {/* Member filter */}
             <div style={S.filterRow}>
               <button style={S.chip(memberFilter === "all", "#7C5CFC")} onClick={() => setMemberFilter("all")}>Everyone</button>
               {members.map((m) => (
@@ -782,7 +918,6 @@ function App() {
               ))}
             </div>
 
-            {/* Category filter */}
             <div style={S.filterRow}>
               <button style={S.chip(filter === "all", "#6B7280")} onClick={() => setFilter("all")}>All</button>
               {CATEGORIES.map((c) => (
@@ -847,15 +982,17 @@ function App() {
 
             {byMember.map((m) => {
               const myExpenses = groupExpenses.filter((e) => e.userId === m.id).sort((a, b) => (a.date < b.date ? 1 : -1));
+              const isSelf = m.id === currentUser.id;
+              const canManage = isAdmin; // admins can manage everyone (including self, with safeguards below)
               return (
                 <div key={m.id} style={S.card}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
                     <Avatar user={m} size={46} />
                     <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 16, fontWeight: 700 }}>{m.name}</span>
-                        <span style={{ fontSize: 10, color: m.color, fontWeight: 600, background: m.color + "22", padding: "2px 8px", borderRadius: 20 }}>{m.role}</span>
-                        {m.id === currentUser.id && <span style={{ fontSize: 10, color: "#6B7280" }}>(you)</span>}
+                        <span style={{ fontSize: 10, color: m.color, fontWeight: 600, background: m.color + "22", padding: "2px 8px", borderRadius: 20, textTransform: "uppercase" }}>{m.role}</span>
+                        {isSelf && <span style={{ fontSize: 10, color: "#6B7280" }}>(you)</span>}
                       </div>
                       <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>{m.email}</div>
                     </div>
@@ -870,6 +1007,43 @@ function App() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Admin management controls */}
+                  {canManage && (
+                    <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                      {m.role === "member" ? (
+                        <button
+                          style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "1.5px solid #7C5CFC44", background: "#7C5CFC18", color: "#7C5CFC", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                          onClick={() => setMemberRole(m.id, "admin")}
+                        >
+                          👑 Make Admin
+                        </button>
+                      ) : (
+                        <button
+                          style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "1.5px solid #25283688", background: "#0F1117", color: "#6B7280", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                          onClick={() => setMemberRole(m.id, "member")}
+                        >
+                          👤 Make Member
+                        </button>
+                      )}
+                      <button
+                        style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "1.5px solid #FF6B6B44", background: "#FF6B6B18", color: "#FF6B6B", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                        onClick={() => setRemoveMemberId(m.id)}
+                      >
+                        {isSelf ? "🚪 Leave Group" : "🗑️ Remove"}
+                      </button>
+                    </div>
+                  )}
+                  {!canManage && isSelf && (
+                    <div style={{ marginBottom: 14 }}>
+                      <button
+                        style={{ width: "100%", padding: "9px 0", borderRadius: 10, border: "1.5px solid #FF6B6B44", background: "#FF6B6B18", color: "#FF6B6B", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                        onClick={() => setRemoveMemberId(m.id)}
+                      >
+                        🚪 Leave Group
+                      </button>
+                    </div>
+                  )}
 
                   {/* Recent expenses */}
                   <div style={{ fontSize: 10, color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 8 }}>Recent Expenses</div>
@@ -903,7 +1077,6 @@ function App() {
         {/* ══════════════ ANALYTICS ══════════════ */}
         {activeTab === "analytics" && (
           <>
-            {/* Top summary */}
             <div style={S.statsRow}>
               <div style={S.statCard("#7C5CFC")}>
                 <div style={S.statLabel}>Total Spent</div>
@@ -915,10 +1088,11 @@ function App() {
               </div>
             </div>
 
-            {/* Per-member breakdown */}
             <div style={S.card}>
               <div style={S.sectionTitle}>Spending by Member</div>
-              {byMember.map((m) => (
+              {byMember.length === 0 ? (
+                <div style={{ color: "#6B7280", fontSize: 13, textAlign: "center", padding: "16px 0" }}>No data yet</div>
+              ) : byMember.map((m) => (
                 <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
                   <Avatar user={m} size={32} />
                   <div style={{ flex: 1 }}>
@@ -937,7 +1111,6 @@ function App() {
               ))}
             </div>
 
-            {/* Category breakdown */}
             <div style={S.card}>
               <div style={S.sectionTitle}>Spending by Category</div>
               {byCategory.length === 0 ? (
@@ -961,29 +1134,34 @@ function App() {
               ))}
             </div>
 
-            {/* Fair share analysis */}
             <div style={S.card}>
               <div style={S.sectionTitle}>Fair Share Analysis</div>
-              <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 14 }}>Equal split of {money(totalSpent, group.currency)} among {members.length} members = {money(totalSpent / members.length, group.currency)} each</div>
-              {byMember.map((m) => {
-                const fairShare = totalSpent / members.length;
-                const diff = m.total - fairShare;
-                return (
-                  <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #1E2130" }}>
-                    <Avatar user={m} size={30} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>{m.name.split(" ")[0]}</div>
-                      <div style={{ fontSize: 11, color: "#6B7280" }}>paid {money(m.total, group.currency)}</div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: diff >= 0 ? "#22D3A5" : "#FF6B6B" }}>
-                        {diff >= 0 ? "+" : ""}{money(diff, group.currency)}
+              {members.length === 0 ? (
+                <div style={{ color: "#6B7280", fontSize: 13, textAlign: "center", padding: "16px 0" }}>No members yet</div>
+              ) : (
+                <>
+                  <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 14 }}>Equal split of {money(totalSpent, group.currency)} among {members.length} members = {money(totalSpent / members.length, group.currency)} each</div>
+                  {byMember.map((m) => {
+                    const fairShare = totalSpent / members.length;
+                    const diff = m.total - fairShare;
+                    return (
+                      <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #1E2130" }}>
+                        <Avatar user={m} size={30} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 500 }}>{m.name.split(" ")[0]}</div>
+                          <div style={{ fontSize: 11, color: "#6B7280" }}>paid {money(m.total, group.currency)}</div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: diff >= 0 ? "#22D3A5" : "#FF6B6B" }}>
+                            {diff >= 0 ? "+" : ""}{money(diff, group.currency)}
+                          </div>
+                          <div style={{ fontSize: 10, color: "#6B7280" }}>{diff >= 0 ? "overpaid" : "underpaid"}</div>
+                        </div>
                       </div>
-                      <div style={{ fontSize: 10, color: "#6B7280" }}>{diff >= 0 ? "overpaid" : "underpaid"}</div>
-                    </div>
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </>
+              )}
             </div>
           </>
         )}
@@ -1010,25 +1188,178 @@ function App() {
         <GroupSettingsModal
           onClose={() => setShowSettingsModal(false)}
           group={group}
-          onSave={(updates) => { setGroup((g) => ({ ...g, ...updates })); setShowSettingsModal(false); showToast("Group settings updated."); }}
+          onSave={(updates) => { setGroups((prev) => prev.map((g) => g.id === group.id ? { ...g, ...updates } : g)); setShowSettingsModal(false); showToast("Group settings updated."); }}
         />
       )}
 
-      {deleteId && (
-        <div style={S.delOverlay}>
-          <div style={S.delCard}>
-            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>Delete expense?</div>
-            <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20 }}>This cannot be undone.</div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button style={{ flex: 1, padding: 13, background: "#1E2130", border: "1.5px solid #252836", borderRadius: 12, color: "#E8E9F0", fontWeight: 500, cursor: "pointer" }} onClick={() => setDeleteId(null)}>Cancel</button>
-              <button style={{ flex: 1, padding: 13, background: "#FF6B6B22", border: "1.5px solid #FF6B6B", borderRadius: 12, color: "#FF6B6B", fontWeight: 700, cursor: "pointer" }} onClick={() => deleteExpense(deleteId)}>Delete</button>
-            </div>
+      {showGroupSwitcher && (
+        <div style={S.switcherOverlay} onClick={(e) => e.target === e.currentTarget && setShowGroupSwitcher(false)}>
+          <div style={S.switcherSheet}>
+            <div style={{ width: 40, height: 4, background: "#252836", borderRadius: 4, margin: "0 auto 20px" }} />
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Your Family Groups</div>
+            {myGroups.map((g) => (
+              <div key={g.id} style={S.groupRow(g.id === group.id)} onClick={() => switchGroup(g.id)}>
+                <div style={{ width: 40, height: 40, borderRadius: 12, background: "#7C5CFC22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
+                  {getCurrency(g.currency).flag}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{g.name}</div>
+                  <div style={{ fontSize: 11, color: "#6B7280" }}>{g.members.length} members · {g.currency}</div>
+                </div>
+                {g.id === group.id && <span style={{ color: "#7C5CFC", fontSize: 18 }}>✓</span>}
+              </div>
+            ))}
+            <button
+              style={{ width: "100%", padding: 14, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", borderRadius: 13, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", marginTop: 8, boxShadow: "0 4px 18px rgba(124,92,252,0.35)" }}
+              onClick={() => { setShowGroupSwitcher(false); setShowCreateGroupModal(true); }}
+            >
+              + Create New Family Group
+            </button>
+            <button style={{ width: "100%", padding: 13, background: "transparent", border: "1.5px solid #252836", borderRadius: 13, color: "#6B7280", fontSize: 14, cursor: "pointer", marginTop: 10 }} onClick={() => setShowGroupSwitcher(false)}>
+              Close
+            </button>
           </div>
         </div>
       )}
 
+      {showCreateGroupModal && (
+        <CreateGroupModal
+          onClose={() => setShowCreateGroupModal(false)}
+          onCreate={(name, currency, budget) => { createGroup(name, currency, budget); setShowCreateGroupModal(false); }}
+        />
+      )}
+
+      {deleteId && (
+        <ConfirmDialog
+          title="Delete expense?"
+          description="This cannot be undone."
+          confirmLabel="Delete"
+          onCancel={() => setDeleteId(null)}
+          onConfirm={() => deleteExpense(deleteId)}
+        />
+      )}
+
+      {removeMemberId && (() => {
+        const target = members.find((m) => m.id === removeMemberId);
+        const isSelf = removeMemberId === currentUser.id;
+        return (
+          <ConfirmDialog
+            title={isSelf ? "Leave this group?" : `Remove ${target?.name.split(" ")[0]}?`}
+            description={isSelf
+              ? "You'll lose access to this group's expenses. This can't be undone unless an admin re-invites you."
+              : `${target?.name} will be removed from ${group.name} and their expenses in this group will be deleted.`}
+            confirmLabel={isSelf ? "Leave" : "Remove"}
+            onCancel={() => setRemoveMemberId(null)}
+            onConfirm={() => removeMember(removeMemberId)}
+          />
+        );
+      })()}
+
       {/* Toast notification */}
       {toast && <div style={S.toast}>✓ {toast}</div>}
+    </div>
+  );
+}
+
+// ─── NO GROUP / EMPTY STATE SCREEN ──────────────────────────────────────────────
+
+function NoGroupScreen({ currentUser, onCreateGroup, onSignOut }) {
+  const [showCreate, setShowCreate] = React.useState(false);
+
+  const S = {
+    root: { minHeight: "100vh", background: "#0F1117", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "'Inter',system-ui,sans-serif" },
+    icon: { fontSize: 56, marginBottom: 16 },
+    title: { fontSize: 20, fontWeight: 700, color: "#E8E9F0", marginBottom: 8, textAlign: "center" },
+    sub: { fontSize: 13, color: "#6B7280", marginBottom: 28, textAlign: "center", maxWidth: 300 },
+    btn: { width: "100%", maxWidth: 320, padding: 15, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", borderRadius: 14, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(124,92,252,0.35)" },
+    signOut: { marginTop: 16, color: "#6B7280", background: "none", border: "none", fontSize: 13, cursor: "pointer" },
+  };
+
+  return (
+    <div style={S.root}>
+      <div style={S.icon}>👨‍👩‍👧‍👦</div>
+      <div style={S.title}>No family groups yet</div>
+      <div style={S.sub}>Hi {currentUser.name.split(" ")[0]}! Create your own family group to start tracking shared expenses.</div>
+      <button style={S.btn} onClick={() => setShowCreate(true)}>+ Create Family Group</button>
+      <button style={S.signOut} onClick={onSignOut}>Sign out</button>
+
+      {showCreate && (
+        <CreateGroupModal onClose={() => setShowCreate(false)} onCreate={(name, currency, budget) => { onCreateGroup(name, currency, budget); setShowCreate(false); }} />
+      )}
+    </div>
+  );
+}
+
+// ─── CREATE GROUP MODAL ──────────────────────────────────────────────────────────
+
+function CreateGroupModal({ onClose, onCreate }) {
+  const [name, setName] = React.useState("");
+  const [currency, setCurrency] = React.useState("USD");
+  const [budget, setBudget] = React.useState("2000");
+  const [error, setError] = React.useState("");
+
+  const S = {
+    overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 250, backdropFilter: "blur(4px)", padding: 20 },
+    card: { background: "#1A1D27", borderRadius: 24, padding: 28, width: "100%", maxWidth: 400, border: "1px solid #252836" },
+    title: { fontSize: 18, fontWeight: 700, color: "#E8E9F0", marginBottom: 6 },
+    sub: { fontSize: 13, color: "#6B7280", marginBottom: 20 },
+    label: { fontSize: 11, color: "#6B7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, display: "block" },
+    input: { width: "100%", background: "#0F1117", border: "1.5px solid #252836", borderRadius: 12, padding: "12px 14px", color: "#E8E9F0", fontSize: 15, fontFamily: "inherit", outline: "none", boxSizing: "border-box", marginBottom: 16 },
+    saveBtn: { width: "100%", padding: 14, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", borderRadius: 13, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(124,92,252,0.35)" },
+    cancelBtn: { width: "100%", padding: 13, background: "transparent", border: "1.5px solid #252836", borderRadius: 13, color: "#6B7280", fontSize: 14, cursor: "pointer", marginTop: 10 },
+    error: { background: "#FF6B6B22", border: "1px solid #FF6B6B44", borderRadius: 10, padding: "10px 14px", color: "#FF6B6B", fontSize: 13, marginBottom: 16 },
+  };
+
+  function create() {
+    if (!name.trim()) { setError("Please enter a group name."); return; }
+    const b = parseFloat(budget);
+    onCreate(name.trim(), currency, isNaN(b) || b <= 0 ? 2000 : b);
+  }
+
+  return (
+    <div style={S.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div style={S.card}>
+        <div style={S.title}>Create Family Group</div>
+        <div style={S.sub}>Start a new group — you'll be the admin.</div>
+        {error && <div style={S.error}>⚠️ {error}</div>}
+
+        <label style={S.label}>Group Name</label>
+        <input style={S.input} placeholder="e.g. Smith Family, Roommates…" value={name} onChange={(e) => setName(e.target.value)} />
+
+        <label style={S.label}>Monthly Budget</label>
+        <input style={S.input} type="number" min="0" step="1" value={budget} onChange={(e) => setBudget(e.target.value)} />
+
+        <label style={S.label}>Currency</label>
+        <select style={{ ...S.input, appearance: "none", cursor: "pointer" }} value={currency} onChange={(e) => setCurrency(e.target.value)}>
+          {CURRENCIES.map((c) => (
+            <option key={c.code} value={c.code}>{c.flag} {c.code} — {c.name} ({c.symbol})</option>
+          ))}
+        </select>
+
+        <button style={S.saveBtn} onClick={create}>Create Group</button>
+        <button style={S.cancelBtn} onClick={onClose}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── GENERIC CONFIRM DIALOG ──────────────────────────────────────────────────────
+
+function ConfirmDialog({ title, description, confirmLabel, onCancel, onConfirm }) {
+  const S = {
+    overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 20 },
+    card: { background: "#1A1D27", borderRadius: 20, padding: 24, width: "100%", maxWidth: 340, border: "1px solid #252836" },
+  };
+  return (
+    <div style={S.overlay}>
+      <div style={S.card}>
+        <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>{title}</div>
+        <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20, lineHeight: 1.5 }}>{description}</div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button style={{ flex: 1, padding: 13, background: "#1E2130", border: "1.5px solid #252836", borderRadius: 12, color: "#E8E9F0", fontWeight: 500, cursor: "pointer" }} onClick={onCancel}>Cancel</button>
+          <button style={{ flex: 1, padding: 13, background: "#FF6B6B22", border: "1.5px solid #FF6B6B", borderRadius: 12, color: "#FF6B6B", fontWeight: 700, cursor: "pointer" }} onClick={onConfirm}>{confirmLabel}</button>
+        </div>
+      </div>
     </div>
   );
 }
