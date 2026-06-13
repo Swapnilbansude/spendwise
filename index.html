@@ -497,12 +497,35 @@ function GroupSettingsModal({ onClose, onSave, group }) {
 
 
 
+// ─── Local persistence ────────────────────────────────────────────────────────
+
+const STORAGE_KEY = "spendwise_v2";
+
+function loadPersisted() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data.users || !data.groups || !data.expenses) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function savePersisted(data) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch {}
+}
+
 function App() {
-  const [users,    setUsers]    = React.useState(SEED_USERS);
-  const [groups,   setGroups]   = React.useState(SEED_GROUPS);
-  const [expenses, setExpenses] = React.useState(SEED_EXPENSES);
+  const persisted = React.useMemo(() => loadPersisted(), []);
+  const [users,    setUsers]    = React.useState(persisted?.users    || SEED_USERS);
+  const [groups,   setGroups]   = React.useState(persisted?.groups   || SEED_GROUPS);
+  const [expenses, setExpenses] = React.useState(persisted?.expenses || SEED_EXPENSES);
   const [currentUser, setCurrentUser] = React.useState(null);
-  const [activeGroupId, setActiveGroupId] = React.useState(SEED_GROUPS[0]?.id || null);
+  const [activeGroupId, setActiveGroupId] = React.useState((persisted?.groups || SEED_GROUPS)[0]?.id || null);
   const [activeTab,   setActiveTab]   = React.useState("dashboard");
   const [showExpModal,  setShowExpModal]  = React.useState(false);
   const [showInvModal,  setShowInvModal]  = React.useState(false);
@@ -523,6 +546,11 @@ function App() {
     () => groups.filter((g) => currentUser && g.members.some((m) => m.userId === currentUser.id)),
     [groups, currentUser]
   );
+
+  // Persist state changes to localStorage
+  React.useEffect(() => {
+    savePersisted({ users, groups, expenses });
+  }, [users, groups, expenses]);
 
   // Ensure activeGroupId is valid for current user
   React.useEffect(() => {
@@ -798,6 +826,14 @@ function App() {
                 </button>
                 <button style={S.menuItem(true)} onClick={() => { setCurrentUser(null); setShowProfileMenu(false); }}>
                   🚪 Sign Out
+                </button>
+                <button style={S.menuItem(true)} onClick={() => {
+                  if (window.confirm("Reset all data to demo defaults? This removes all your changes.")) {
+                    localStorage.removeItem(STORAGE_KEY);
+                    window.location.reload();
+                  }
+                }}>
+                  ♻️ Reset Demo Data
                 </button>
               </div>
             )}
