@@ -73,38 +73,11 @@ const CURRENCIES = [
 const getCurrency = (code) => CURRENCIES.find((c) => c.code === code) || CURRENCIES[0];
 const ZERO_DECIMAL = ["JPY"];
 
-// ─── Seed data ─────────────────────────────────────────────────────────────────
+// ─── Seed data (empty — first user to register creates their own group) ───────
 
-const SEED_USERS = [
-  { id: "u1", name: "Alex Johnson",  email: "alex@family.com",  password: "password", avatar: "AJ", color: "#7C5CFC" },
-  { id: "u2", name: "Sam Johnson",   email: "sam@family.com",   password: "password", avatar: "SJ", color: "#22D3A5" },
-  { id: "u3", name: "Jordan Johnson",email: "jordan@family.com",password: "password", avatar: "JJ", color: "#FF8C42" },
-];
-
-// Each group now has its own member list with per-group roles
-const SEED_GROUPS = [
-  {
-    id: "g1", name: "Johnson Family", budget: 4000, currency: "USD",
-    members: [
-      { userId: "u1", role: "admin" },
-      { userId: "u2", role: "member" },
-      { userId: "u3", role: "member" },
-    ],
-  },
-];
-
-const SEED_EXPENSES = [
-  { id: 1,  title: "Grocery run",    amount: 84.50,  category: "food",          date: "2026-06-11", note: "Weekly groceries", userId: "u1", groupId: "g1" },
-  { id: 2,  title: "Uber to office", amount: 12.00,  category: "transport",     date: "2026-06-11", note: "",                 userId: "u2", groupId: "g1" },
-  { id: 3,  title: "Netflix",        amount: 15.99,  category: "entertainment", date: "2026-06-10", note: "Monthly sub",      userId: "u1", groupId: "g1" },
-  { id: 4,  title: "Pharmacy",       amount: 38.75,  category: "health",        date: "2026-06-10", note: "",                 userId: "u3", groupId: "g1" },
-  { id: 5,  title: "Amazon order",   amount: 129.00, category: "shopping",      date: "2026-06-09", note: "Headphones",       userId: "u2", groupId: "g1" },
-  { id: 6,  title: "Electric bill",  amount: 92.00,  category: "bills",         date: "2026-06-08", note: "June bill",        userId: "u1", groupId: "g1" },
-  { id: 7,  title: "Sushi dinner",   amount: 67.40,  category: "food",          date: "2026-06-08", note: "",                 userId: "u3", groupId: "g1" },
-  { id: 8,  title: "Flight tickets", amount: 340.00, category: "travel",        date: "2026-06-07", note: "NYC trip",         userId: "u1", groupId: "g1" },
-  { id: 9,  title: "School books",   amount: 54.00,  category: "shopping",      date: "2026-06-07", note: "",                 userId: "u3", groupId: "g1" },
-  { id: 10, title: "Gym membership", amount: 45.00,  category: "health",        date: "2026-06-06", note: "Monthly",          userId: "u2", groupId: "g1" },
-];
+const SEED_USERS = [];
+const SEED_GROUPS = [];
+const SEED_EXPENSES = [];
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -197,9 +170,6 @@ function AuthScreen({ users, onLogin, onRegister }) {
     toggle: { textAlign: "center", marginTop: 18, fontSize: 13, color: "#6B7280" },
     toggleLink: { color: "#7C5CFC", fontWeight: 600, cursor: "pointer", marginLeft: 4, background: "none", border: "none", fontSize: 13, fontFamily: "inherit" },
     error: { background: "#FF6B6B22", border: "1px solid #FF6B6B44", borderRadius: 10, padding: "10px 14px", color: "#FF6B6B", fontSize: 13, marginBottom: 16 },
-    demoBox: { marginTop: 20, background: "#0F1117", borderRadius: 12, padding: "14px 16px", border: "1px solid #252836" },
-    demoTitle: { fontSize: 11, color: "#6B7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 },
-    demoRow: { display: "flex", alignItems: "center", gap: 8, padding: "6px 0", cursor: "pointer", borderRadius: 8 },
   };
 
   function set(k, v) { setForm((p) => ({ ...p, [k]: v })); setError(""); }
@@ -278,21 +248,6 @@ function AuthScreen({ users, onLogin, onRegister }) {
             {mode === "login" ? "Register" : "Sign In"}
           </button>
         </div>
-
-        {mode === "login" && (
-          <div style={S.demoBox}>
-            <div style={S.demoTitle}>Demo accounts (password: password)</div>
-            {SEED_USERS.map((u) => (
-              <div key={u.id} style={S.demoRow} onClick={() => { setForm({ ...form, email: u.email, password: "password" }); setError(""); }}>
-                <Avatar user={u} size={28} />
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#E8E9F0" }}>{u.name}</div>
-                  <div style={{ fontSize: 11, color: "#6B7280" }}>{u.email}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -444,16 +399,144 @@ function InviteModal({ onClose, onInvite, users, group }) {
   );
 }
 
-// ─── GROUP SETTINGS MODAL ──────────────────────────────────────────────────────
+// ─── PROFILE MODAL ────────────────────────────────────────────────────────────
 
-function GroupSettingsModal({ onClose, onSave, group }) {
+function ProfileModal({ onClose, onSave, onDeleteAccount, currentUser, users }) {
+  const [name, setName] = React.useState(currentUser.name);
+  const [email, setEmail] = React.useState(currentUser.email);
+  const [color, setColor] = React.useState(currentUser.color);
+  const [currentPassword, setCurrentPassword] = React.useState("");
+  const [newPassword, setNewPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [error, setError] = React.useState("");
+  const [success, setSuccess] = React.useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  const [showPass, setShowPass] = React.useState(false);
+
+  const S = {
+    overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100, backdropFilter: "blur(4px)" },
+    sheet: { background: "#1A1D27", borderRadius: "24px 24px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 480, border: "1px solid #252836", borderBottom: "none", maxHeight: "90vh", overflowY: "auto" },
+    handle: { width: 40, height: 4, background: "#252836", borderRadius: 4, margin: "0 auto 20px" },
+    title: { fontSize: 18, fontWeight: 700, color: "#E8E9F0", marginBottom: 4 },
+    sub: { fontSize: 13, color: "#6B7280", marginBottom: 20 },
+    label: { fontSize: 11, color: "#6B7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, display: "block" },
+    input: { width: "100%", background: "#0F1117", border: "1.5px solid #252836", borderRadius: 12, padding: "12px 14px", color: "#E8E9F0", fontSize: 15, fontFamily: "inherit", outline: "none", boxSizing: "border-box" },
+    group: { marginBottom: 16 },
+    error: { background: "#FF6B6B22", border: "1px solid #FF6B6B44", borderRadius: 10, padding: "10px 14px", color: "#FF6B6B", fontSize: 13, marginBottom: 16 },
+    success: { background: "#22D3A522", border: "1px solid #22D3A544", borderRadius: 10, padding: "10px 14px", color: "#22D3A5", fontSize: 13, marginBottom: 16 },
+    saveBtn: { width: "100%", padding: 14, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", borderRadius: 13, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", marginTop: 4, boxShadow: "0 4px 20px rgba(124,92,252,0.35)" },
+    cancelBtn: { width: "100%", padding: 13, background: "transparent", border: "1.5px solid #252836", borderRadius: 13, color: "#6B7280", fontSize: 14, fontWeight: 500, cursor: "pointer", marginTop: 10 },
+    colorGrid: { display: "flex", gap: 10, flexWrap: "wrap" },
+    colorSwatch: (c, active) => ({ width: 36, height: 36, borderRadius: 12, background: c, border: active ? "3px solid #E8E9F0" : "3px solid transparent", cursor: "pointer", boxShadow: active ? `0 0 0 2px ${c}` : "none" }),
+    sectionLabel: { fontSize: 11, color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 24, marginBottom: 12, borderTop: "1px solid #252836", paddingTop: 20 },
+    eyeBtn: { position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#6B7280", cursor: "pointer", fontSize: 16 },
+    inputWrap: { position: "relative" },
+    dangerBtn: { width: "100%", padding: 13, background: "#FF6B6B18", border: "1.5px solid #FF6B6B44", borderRadius: 13, color: "#FF6B6B", fontSize: 14, fontWeight: 600, cursor: "pointer", marginTop: 8 },
+  };
+
+  function save() {
+    setError(""); setSuccess("");
+    if (!name.trim()) { setError("Please enter your name."); return; }
+    if (!email.includes("@")) { setError("Please enter a valid email."); return; }
+    const emailTaken = users.find((u) => u.id !== currentUser.id && u.email.toLowerCase() === email.toLowerCase());
+    if (emailTaken) { setError("That email is already used by another account."); return; }
+
+    const updates = { name: name.trim(), email: email.toLowerCase(), color };
+
+    // Password change is optional
+    if (newPassword || confirmPassword || currentPassword) {
+      if (currentPassword !== currentUser.password) { setError("Current password is incorrect."); return; }
+      if (newPassword.length < 6) { setError("New password must be at least 6 characters."); return; }
+      if (newPassword !== confirmPassword) { setError("New passwords don't match."); return; }
+      updates.password = newPassword;
+    }
+
+    // Keep avatar initials in sync if name changed
+    updates.avatar = initials(name.trim());
+
+    onSave(updates);
+    setSuccess("Profile updated!");
+    setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+  }
+
+  return (
+    <div style={S.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div style={S.sheet}>
+        <div style={S.handle} />
+        <div style={S.title}>Edit Profile</div>
+        <div style={S.sub}>Update your account details.</div>
+
+        {error && <div style={S.error}>⚠️ {error}</div>}
+        {success && <div style={S.success}>✓ {success}</div>}
+
+        <div style={S.group}>
+          <label style={S.label}>Full Name</label>
+          <input style={S.input} value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+
+        <div style={S.group}>
+          <label style={S.label}>Email</label>
+          <input style={S.input} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        </div>
+
+        <div style={S.group}>
+          <label style={S.label}>Avatar Color</label>
+          <div style={S.colorGrid}>
+            {MEMBER_COLORS.map((c) => (
+              <div key={c} style={S.colorSwatch(c, color === c)} onClick={() => setColor(c)} />
+            ))}
+          </div>
+        </div>
+
+        <div style={S.sectionLabel}>Change Password (optional)</div>
+
+        <div style={S.group}>
+          <label style={S.label}>Current Password</label>
+          <div style={S.inputWrap}>
+            <input style={S.input} type={showPass ? "text" : "password"} placeholder="Leave blank to keep current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+            <button style={S.eyeBtn} onClick={() => setShowPass((p) => !p)}>{showPass ? "🙈" : "👁️"}</button>
+          </div>
+        </div>
+        <div style={S.group}>
+          <label style={S.label}>New Password</label>
+          <input style={S.input} type={showPass ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+        </div>
+        <div style={S.group}>
+          <label style={S.label}>Confirm New Password</label>
+          <input style={S.input} type={showPass ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+        </div>
+
+        <button style={S.saveBtn} onClick={save}>Save Changes</button>
+        <button style={S.cancelBtn} onClick={onClose}>Close</button>
+
+        <div style={S.sectionLabel}>Danger Zone</div>
+        <button style={S.dangerBtn} onClick={() => setShowDeleteConfirm(true)}>🗑️ Delete Account</button>
+
+        {showDeleteConfirm && (
+          <ConfirmDialog
+            title="Delete your account?"
+            description="This permanently deletes your account, removes you from all family groups, and deletes all your expenses. This cannot be undone."
+            confirmLabel="Delete Account"
+            onCancel={() => setShowDeleteConfirm(false)}
+            onConfirm={onDeleteAccount}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+
+function GroupSettingsModal({ onClose, onSave, onDeleteGroup, group, memberCount }) {
   const [name, setName] = React.useState(group.name);
   const [budget, setBudget] = React.useState(String(group.budget));
   const [currency, setCurrency] = React.useState(group.currency);
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
 
   const S = {
     overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, backdropFilter: "blur(4px)", padding: 20 },
-    card: { background: "#1A1D27", borderRadius: 24, padding: 28, width: "100%", maxWidth: 400, border: "1px solid #252836" },
+    card: { background: "#1A1D27", borderRadius: 24, padding: 28, width: "100%", maxWidth: 400, border: "1px solid #252836", maxHeight: "90vh", overflowY: "auto" },
     title: { fontSize: 18, fontWeight: 700, color: "#E8E9F0", marginBottom: 6 },
     sub: { fontSize: 13, color: "#6B7280", marginBottom: 20 },
     label: { fontSize: 11, color: "#6B7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, display: "block" },
@@ -461,6 +544,8 @@ function GroupSettingsModal({ onClose, onSave, group }) {
     saveBtn: { width: "100%", padding: 14, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", borderRadius: 13, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(124,92,252,0.35)" },
     cancelBtn: { width: "100%", padding: 13, background: "transparent", border: "1.5px solid #252836", borderRadius: 13, color: "#6B7280", fontSize: 14, cursor: "pointer", marginTop: 10 },
     note: { fontSize: 11, color: "#6B7280", marginTop: -8, marginBottom: 16, lineHeight: 1.5 },
+    sectionLabel: { fontSize: 11, color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 12, marginBottom: 12, borderTop: "1px solid #252836", paddingTop: 20 },
+    dangerBtn: { width: "100%", padding: 13, background: "#FF6B6B18", border: "1.5px solid #FF6B6B44", borderRadius: 13, color: "#FF6B6B", fontSize: 14, fontWeight: 600, cursor: "pointer" },
   };
 
   function save() {
@@ -490,6 +575,19 @@ function GroupSettingsModal({ onClose, onSave, group }) {
 
         <button style={S.saveBtn} onClick={save}>Save Settings</button>
         <button style={S.cancelBtn} onClick={onClose}>Cancel</button>
+
+        <div style={S.sectionLabel}>Danger Zone</div>
+        <button style={S.dangerBtn} onClick={() => setShowDeleteConfirm(true)}>🗑️ Delete Group</button>
+
+        {showDeleteConfirm && (
+          <ConfirmDialog
+            title={`Delete "${group.name}"?`}
+            description={`This permanently deletes the group, all ${memberCount} member${memberCount === 1 ? "" : "s"}' access, and every expense in it. This cannot be undone.`}
+            confirmLabel="Delete Group"
+            onCancel={() => setShowDeleteConfirm(false)}
+            onConfirm={onDeleteGroup}
+          />
+        )}
       </div>
     </div>
   );
@@ -530,6 +628,7 @@ function App() {
   const [showExpModal,  setShowExpModal]  = React.useState(false);
   const [showInvModal,  setShowInvModal]  = React.useState(false);
   const [showSettingsModal, setShowSettingsModal] = React.useState(false);
+  const [showProfileModal, setShowProfileModal] = React.useState(false);
   const [showCreateGroupModal, setShowCreateGroupModal] = React.useState(false);
   const [showGroupSwitcher, setShowGroupSwitcher] = React.useState(false);
   const [editExpense,   setEditExpense]   = React.useState(null);
@@ -633,6 +732,26 @@ function App() {
     showToast(`${u.name} added to ${group.name}!`);
   }
 
+  function updateProfile(updates) {    setUsers((prev) => prev.map((u) => u.id === currentUser.id ? { ...u, ...updates } : u));
+    setCurrentUser((prev) => ({ ...prev, ...updates }));
+    showToast("Profile updated.");
+  }
+
+  function deleteAccount() {
+    const uid = currentUser.id;
+    // Remove user from all groups; delete groups that would have zero admins/members as a result
+    setGroups((prev) => prev
+      .map((g) => ({ ...g, members: g.members.filter((m) => m.userId !== uid) }))
+      .filter((g) => g.members.length > 0)
+    );
+    // Delete this user's expenses everywhere
+    setExpenses((prev) => prev.filter((e) => e.userId !== uid));
+    // Remove the user record
+    setUsers((prev) => prev.filter((u) => u.id !== uid));
+    setShowProfileModal(false);
+    setCurrentUser(null);
+  }
+
   function saveExpense(data) {
     if (data.id) {
       setExpenses((p) => p.map((e) => (e.id === data.id ? { ...e, ...data } : e)));
@@ -666,6 +785,15 @@ function App() {
     setActiveGroupId(newGroupId);
     setActiveTab("dashboard");
     showToast(`"${name}" group created!`);
+  }
+
+  function deleteGroup() {
+    const gid = group.id;
+    setGroups((prev) => prev.filter((g) => g.id !== gid));
+    setExpenses((prev) => prev.filter((e) => e.groupId !== gid));
+    setShowSettingsModal(false);
+    setActiveGroupId(null);
+    showToast("Group deleted.");
   }
 
   function switchGroup(id) {
@@ -818,6 +946,9 @@ function App() {
                     ⚙️ Group Settings
                   </button>
                 )}
+                <button style={S.menuItem(false)} onClick={() => { setShowProfileModal(true); setShowProfileMenu(false); }}>
+                  👤 Edit Profile
+                </button>
                 <button style={S.menuItem(false)} onClick={() => { setActiveTab("members"); setShowProfileMenu(false); }}>
                   👨‍👩‍👧‍👦 Family Members
                 </button>
@@ -828,12 +959,12 @@ function App() {
                   🚪 Sign Out
                 </button>
                 <button style={S.menuItem(true)} onClick={() => {
-                  if (window.confirm("Reset all data to demo defaults? This removes all your changes.")) {
+                  if (window.confirm("Reset all app data? This permanently deletes all accounts, groups, and expenses on this device.")) {
                     localStorage.removeItem(STORAGE_KEY);
                     window.location.reload();
                   }
                 }}>
-                  ♻️ Reset Demo Data
+                  ♻️ Reset App Data
                 </button>
               </div>
             )}
@@ -853,6 +984,21 @@ function App() {
         {/* ══════════════ DASHBOARD ══════════════ */}
         {activeTab === "dashboard" && (
           <>
+            {members.length === 1 && isAdmin && (
+              <div style={{ ...S.card, display: "flex", alignItems: "center", gap: 14, background: "linear-gradient(135deg,#7C5CFC18,#5B3FD418)", borderColor: "#7C5CFC33" }}>
+                <div style={{ fontSize: 28 }}>👋</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#E8E9F0", marginBottom: 2 }}>You're flying solo</div>
+                  <div style={{ fontSize: 12, color: "#6B7280" }}>Invite family members to track shared expenses together.</div>
+                </div>
+                <button
+                  style={{ flexShrink: 0, padding: "8px 14px", background: "#7C5CFC", border: "none", borderRadius: 10, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                  onClick={() => setShowInvModal(true)}
+                >
+                  Invite
+                </button>
+              </div>
+            )}
             <div style={{ ...S.card, textAlign: "center" }}>
               <div style={{ fontSize: 11, color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4 }}>Family Budget</div>
               <div style={{ display: "flex", justifyContent: "center" }}>
@@ -1224,7 +1370,19 @@ function App() {
         <GroupSettingsModal
           onClose={() => setShowSettingsModal(false)}
           group={group}
+          memberCount={members.length}
           onSave={(updates) => { setGroups((prev) => prev.map((g) => g.id === group.id ? { ...g, ...updates } : g)); setShowSettingsModal(false); showToast("Group settings updated."); }}
+          onDeleteGroup={deleteGroup}
+        />
+      )}
+
+      {showProfileModal && (
+        <ProfileModal
+          onClose={() => setShowProfileModal(false)}
+          onSave={updateProfile}
+          onDeleteAccount={deleteAccount}
+          currentUser={currentUser}
+          users={users}
         />
       )}
 
