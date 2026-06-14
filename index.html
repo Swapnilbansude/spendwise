@@ -3,28 +3,62 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<meta name="theme-color" content="#0F1117" />
+<meta name="theme-color" content="#0A0B12" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Spendwise" />
 <title>Spendwise - Family Expense Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: #0F1117; overscroll-behavior-y: none; }
-  body { font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  html, body {
+    margin: 0; padding: 0; overscroll-behavior-y: none;
+    background: #0A0B12;
+    background-image:
+      radial-gradient(ellipse 800px 500px at 15% -10%, rgba(139,124,255,0.16), transparent 60%),
+      radial-gradient(ellipse 600px 500px at 110% 10%, rgba(52,211,153,0.07), transparent 55%),
+      linear-gradient(165deg, #0A0B12 0%, #100E1C 45%, #0A0B12 100%);
+    background-attachment: fixed;
+  }
+  body { font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
   #root { min-height: 100vh; }
   input, select, button, textarea { font-family: 'Inter', system-ui, sans-serif; }
   input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; }
+  input:focus, select:focus, textarea:focus {
+    border-color: #8B7CFF !important;
+    box-shadow: 0 0 0 3px rgba(139,124,255,0.15);
+  }
+  input, select, textarea { transition: border-color 0.2s, box-shadow 0.2s; }
   ::-webkit-scrollbar { width: 0; height: 0; }
+  :focus-visible { outline: 2px solid #8B7CFF; outline-offset: 2px; border-radius: 6px; }
+
+  /* ─── Micro-interaction utilities ─────────────────────────────── */
+  .sw-press { transition: transform 0.15s cubic-bezier(.34,1.56,.64,1), filter 0.15s, box-shadow 0.15s, border-color 0.15s, background 0.2s; }
+  .sw-press:active { transform: scale(0.96); filter: brightness(0.94); }
+  @media (hover: hover) {
+    .sw-press:hover { filter: brightness(1.06); }
+    .sw-card-hover:hover { border-color: rgba(139,124,255,0.35) !important; transform: translateY(-1px); box-shadow: 0 8px 28px rgba(0,0,0,0.28); }
+  }
+  .sw-card-hover { transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
+  .sw-fadein { animation: swFadeIn 0.35s cubic-bezier(.16,1,.3,1) both; }
+  .sw-fadein-delay1 { animation: swFadeIn 0.35s cubic-bezier(.16,1,.3,1) 0.04s both; }
+  .sw-fadein-delay2 { animation: swFadeIn 0.35s cubic-bezier(.16,1,.3,1) 0.08s both; }
+  @keyframes swFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes swSlideUp { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes swPulseGlow { 0%,100% { opacity: 0.55; transform: scale(1); } 50% { opacity: 0.85; transform: scale(1.04); } }
+  .sw-sheet-anim { animation: swSlideUp 0.32s cubic-bezier(.16,1,.3,1) both; }
+  .sw-glow { animation: swPulseGlow 4s ease-in-out infinite; }
+
   /* Loading splash */
   #splash {
-    position: fixed; inset: 0; background: #0F1117; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; z-index: 9999; font-family: 'Inter', sans-serif;
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; z-index: 9999; font-family: 'Plus Jakarta Sans', sans-serif;
+    background: #0A0B12;
   }
   #splash .logo { font-size: 56px; margin-bottom: 12px; animation: pulse 1.4s ease-in-out infinite; }
-  #splash .brand { color: #E8E9F0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  #splash .brand { color: #F2F3F7; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
   @keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: 0.7; } }
 </style>
 </head>
@@ -49,14 +83,14 @@ const CATEGORIES = [
   { id: "food",          label: "Food & Dining",  icon: "🍔", color: "#FF8C42" },
   { id: "transport",     label: "Transport",       icon: "🚗", color: "#4ECDC4" },
   { id: "shopping",      label: "Shopping",        icon: "🛍️", color: "#A78BFA" },
-  { id: "health",        label: "Health",          icon: "💊", color: "#22D3A5" },
+  { id: "health",        label: "Health",          icon: "💊", color: "#34D399" },
   { id: "entertainment", label: "Entertainment",   icon: "🎬", color: "#F472B6" },
   { id: "bills",         label: "Bills",           icon: "📄", color: "#60A5FA" },
   { id: "travel",        label: "Travel",          icon: "✈️", color: "#FBBF24" },
   { id: "other",         label: "Other",           icon: "📦", color: "#9CA3AF" },
 ];
 
-const MEMBER_COLORS = ["#7C5CFC","#22D3A5","#FF8C42","#F472B6","#60A5FA","#FBBF24","#FF6B6B","#4ECDC4"];
+const MEMBER_COLORS = ["#8B7CFF","#34D399","#FF8C42","#F472B6","#60A5FA","#FBBF24","#FB7185","#4ECDC4"];
 
 const CURRENCIES = [
   { code: "USD", symbol: "$",  name: "US Dollar",        flag: "🇺🇸" },
@@ -96,6 +130,24 @@ function formatDateLabel(d) {
   return new Date(d + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 }
 
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 5) return "Good night";
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  if (h < 21) return "Good evening";
+  return "Good night";
+}
+
+function greetingEmoji() {
+  const h = new Date().getHours();
+  if (h < 5) return "🌙";
+  if (h < 12) return "☀️";
+  if (h < 17) return "🌤️";
+  if (h < 21) return "🌇";
+  return "🌙";
+}
+
 function groupByDate(list) {
   const map = {};
   list.forEach((e) => { if (!map[e.date]) map[e.date] = []; map[e.date].push(e); });
@@ -112,10 +164,12 @@ function Avatar({ user, size = 36 }) {
   return (
     <div style={{
       width: size, height: size, borderRadius: size / 3,
-      background: user.color + "33", border: `2px solid ${user.color}`,
+      background: `linear-gradient(155deg, ${user.color}40, ${user.color}15)`,
+      border: `1.5px solid ${user.color}80`,
       display: "flex", alignItems: "center", justifyContent: "center",
       fontSize: size * 0.33, fontWeight: 700, color: user.color, flexShrink: 0,
-      fontFamily: "Inter,sans-serif",
+      fontFamily: "'Plus Jakarta Sans',sans-serif",
+      boxShadow: `0 2px 8px ${user.color}22`,
     }}>
       {user.avatar || initials(user.name)}
     </div>
@@ -129,20 +183,44 @@ function RadialGauge({ spent, budget, currency }) {
   const arcLen = circumference * 0.75;
   const gap    = circumference * 0.25;
   const offset = arcLen * (1 - pct);
-  const color  = pct > 0.9 ? "#FF6B6B" : pct > 0.7 ? "#FBBF24" : "#7C5CFC";
+  const danger = pct > 0.9;
+  const warn   = pct > 0.7 && !danger;
+  const color  = danger ? "#FB7185" : warn ? "#FBBF24" : "#8B7CFF";
+  const gradId = danger ? "gaugeDanger" : warn ? "gaugeWarn" : "gaugeOk";
   return (
-    <svg width="180" height="180" viewBox="0 0 180 180">
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1E2130" strokeWidth="14"
-        strokeDasharray={`${arcLen} ${gap}`} strokeLinecap="round"
-        transform={`rotate(135 ${cx} ${cy})`} />
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth="14"
-        strokeDasharray={`${Math.max(arcLen - offset, 0)} ${circumference}`}
-        strokeLinecap="round" transform={`rotate(135 ${cx} ${cy})`}
-        style={{ transition: "stroke-dasharray 0.6s cubic-bezier(.4,0,.2,1), stroke 0.4s" }} />
-      <text x={cx} y={cy - 10} textAnchor="middle" fill="#E8E9F0" fontSize="20" fontWeight="700" fontFamily="Inter,sans-serif">{money(spent, currency)}</text>
-      <text x={cx} y={cy + 14} textAnchor="middle" fill="#6B7280" fontSize="11" fontFamily="Inter,sans-serif">of {money(budget, currency)}</text>
-      <text x={cx} y={cy + 32} textAnchor="middle" fill={color} fontSize="12" fontWeight="600" fontFamily="Inter,sans-serif">{Math.round(pct * 100)}% used</text>
-    </svg>
+    <div style={{ position: "relative", width: 180, height: 180 }}>
+      <div className="sw-glow" style={{
+        position: "absolute", inset: 18, borderRadius: "50%",
+        background: `radial-gradient(circle, ${color}33 0%, transparent 70%)`,
+        filter: "blur(10px)", pointerEvents: "none",
+      }} />
+      <svg width="180" height="180" viewBox="0 0 180 180" style={{ position: "relative" }}>
+        <defs>
+          <linearGradient id="gaugeOk" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#A89AFF" />
+            <stop offset="100%" stopColor="#6D5AE0" />
+          </linearGradient>
+          <linearGradient id="gaugeWarn" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#FFD580" />
+            <stop offset="100%" stopColor="#FBBF24" />
+          </linearGradient>
+          <linearGradient id="gaugeDanger" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#FFA3AC" />
+            <stop offset="100%" stopColor="#FB7185" />
+          </linearGradient>
+        </defs>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1D1E28" strokeWidth="14"
+          strokeDasharray={`${arcLen} ${gap}`} strokeLinecap="round"
+          transform={`rotate(135 ${cx} ${cy})`} />
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke={`url(#${gradId})`} strokeWidth="14"
+          strokeDasharray={`${Math.max(arcLen - offset, 0)} ${circumference}`}
+          strokeLinecap="round" transform={`rotate(135 ${cx} ${cy})`}
+          style={{ transition: "stroke-dasharray 0.8s cubic-bezier(.16,1,.3,1), stroke 0.4s" }} />
+        <text x={cx} y={cy - 10} textAnchor="middle" fill="#F2F3F7" fontSize="21" fontWeight="800" fontFamily="'Plus Jakarta Sans',sans-serif">{money(spent, currency)}</text>
+        <text x={cx} y={cy + 14} textAnchor="middle" fill="#7B7E8E" fontSize="11" fontFamily="Inter,sans-serif">of {money(budget, currency)}</text>
+        <text x={cx} y={cy + 33} textAnchor="middle" fill={color} fontSize="12" fontWeight="700" fontFamily="Inter,sans-serif">{Math.round(pct * 100)}% used</text>
+      </svg>
+    </div>
   );
 }
 
@@ -155,21 +233,21 @@ function AuthScreen({ users, onLogin, onRegister }) {
   const [showPass, setShowPass] = React.useState(false);
 
   const S = {
-    root: { minHeight: "100vh", background: "#0F1117", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", fontFamily: "Inter,system-ui,sans-serif" },
-    logo: { fontSize: 48, marginBottom: 8 },
-    brand: { fontSize: 28, fontWeight: 800, color: "#E8E9F0", letterSpacing: "-1px", marginBottom: 4 },
-    tagline: { fontSize: 13, color: "#6B7280", marginBottom: 36 },
-    card: { width: "100%", maxWidth: 400, background: "#1A1D27", borderRadius: 24, padding: 28, border: "1px solid #252836" },
-    title: { fontSize: 20, fontWeight: 700, color: "#E8E9F0", marginBottom: 6 },
-    sub: { fontSize: 13, color: "#6B7280", marginBottom: 24 },
-    label: { fontSize: 11, color: "#6B7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, display: "block" },
+    root: { minHeight: "100vh", background: "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", fontFamily: "Inter,system-ui,sans-serif" },
+    logoWrap: { width: 76, height: 76, borderRadius: 22, background: "linear-gradient(155deg, #8B7CFF 0%, #6D5AE0 100%)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 38, marginBottom: 18, boxShadow: "0 12px 36px rgba(139,124,255,0.35)" },
+    brand: { fontSize: 30, fontWeight: 800, color: "#F2F3F7", letterSpacing: "-1px", marginBottom: 6, fontFamily: "'Plus Jakarta Sans',sans-serif" },
+    tagline: { fontSize: 13, color: "#7B7E8E", marginBottom: 36, letterSpacing: 0.2 },
+    card: { width: "100%", maxWidth: 400, background: "linear-gradient(165deg, #181A26 0%, #14151E 100%)", borderRadius: 26, padding: 28, border: "1px solid #24262F", boxShadow: "0 20px 60px rgba(0,0,0,0.35)" },
+    title: { fontSize: 21, fontWeight: 800, color: "#F2F3F7", marginBottom: 6, fontFamily: "'Plus Jakarta Sans',sans-serif", letterSpacing: "-0.3px" },
+    sub: { fontSize: 13, color: "#7B7E8E", marginBottom: 24 },
+    label: { fontSize: 11, color: "#7B7E8E", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, display: "block" },
     inputWrap: { position: "relative", marginBottom: 16 },
-    input: { width: "100%", background: "#0F1117", border: "1.5px solid #252836", borderRadius: 12, padding: "12px 14px", color: "#E8E9F0", fontSize: 15, fontFamily: "inherit", outline: "none", boxSizing: "border-box" },
-    eyeBtn: { position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#6B7280", cursor: "pointer", fontSize: 16 },
-    btn: { width: "100%", padding: 14, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", borderRadius: 13, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", marginTop: 4, boxShadow: "0 4px 20px rgba(124,92,252,0.35)", letterSpacing: 0.3 },
-    toggle: { textAlign: "center", marginTop: 18, fontSize: 13, color: "#6B7280" },
-    toggleLink: { color: "#7C5CFC", fontWeight: 600, cursor: "pointer", marginLeft: 4, background: "none", border: "none", fontSize: 13, fontFamily: "inherit" },
-    error: { background: "#FF6B6B22", border: "1px solid #FF6B6B44", borderRadius: 10, padding: "10px 14px", color: "#FF6B6B", fontSize: 13, marginBottom: 16 },
+    input: { width: "100%", background: "#0A0B12", border: "1.5px solid #24262F", borderRadius: 12, padding: "13px 14px", color: "#F2F3F7", fontSize: 15, fontFamily: "inherit", outline: "none", boxSizing: "border-box", transition: "border-color 0.2s" },
+    eyeBtn: { position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#7B7E8E", cursor: "pointer", fontSize: 16 },
+    btn: { width: "100%", padding: 15, background: "linear-gradient(135deg,#8B7CFF,#6D5AE0)", border: "none", borderRadius: 13, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", marginTop: 4, boxShadow: "0 8px 24px rgba(139,124,255,0.4)", letterSpacing: 0.3 },
+    toggle: { textAlign: "center", marginTop: 18, fontSize: 13, color: "#7B7E8E" },
+    toggleLink: { color: "#8B7CFF", fontWeight: 700, cursor: "pointer", marginLeft: 4, background: "none", border: "none", fontSize: 13, fontFamily: "inherit" },
+    error: { background: "#FB718522", border: "1px solid #FB718544", borderRadius: 10, padding: "10px 14px", color: "#FB7185", fontSize: 13, marginBottom: 16 },
   };
 
   function set(k, v) { setForm((p) => ({ ...p, [k]: v })); setError(""); }
@@ -196,11 +274,11 @@ function AuthScreen({ users, onLogin, onRegister }) {
 
   return (
     <div style={S.root}>
-      <div style={S.logo}>💳</div>
-      <div style={S.brand}>Spendwise</div>
-      <div style={S.tagline}>Smart family expense tracking</div>
+      <div className="sw-fadein" style={S.logoWrap}>💳</div>
+      <div className="sw-fadein-delay1" style={S.brand}>Spendwise</div>
+      <div className="sw-fadein-delay1" style={S.tagline}>Smart family expense tracking</div>
 
-      <div style={S.card}>
+      <div className="sw-fadein-delay2" style={S.card}>
         <div style={S.title}>{mode === "login" ? "Welcome back" : "Create account"}</div>
         <div style={S.sub}>{mode === "login" ? "Sign in to your family account" : "Join or start a family group"}</div>
 
@@ -238,7 +316,7 @@ function AuthScreen({ users, onLogin, onRegister }) {
           </div>
         )}
 
-        <button style={S.btn} onClick={mode === "login" ? handleLogin : handleRegister}>
+        <button className="sw-press" style={S.btn} onClick={mode === "login" ? handleLogin : handleRegister}>
           {mode === "login" ? "Sign In →" : "Create Account →"}
         </button>
 
@@ -272,24 +350,24 @@ function ExpenseModal({ onClose, onSave, initial, members, currentUserId, isAdmi
 
   const S = {
     overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100, backdropFilter: "blur(4px)" },
-    sheet: { background: "#1A1D27", borderRadius: "24px 24px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 480, border: "1px solid #252836", borderBottom: "none", maxHeight: "90vh", overflowY: "auto" },
-    handle: { width: 40, height: 4, background: "#252836", borderRadius: 4, margin: "0 auto 20px" },
-    title: { fontSize: 18, fontWeight: 700, color: "#E8E9F0", marginBottom: 20 },
-    label: { fontSize: 11, color: "#6B7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, display: "block" },
-    input: { width: "100%", background: "#0F1117", border: "1.5px solid #252836", borderRadius: 12, padding: "12px 14px", color: "#E8E9F0", fontSize: 15, fontFamily: "inherit", outline: "none", boxSizing: "border-box" },
+    sheet: { background: "linear-gradient(165deg, #181A26 0%, #14151E 100%)", borderRadius: "24px 24px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 480, border: "1px solid #24262F", borderBottom: "none", maxHeight: "90vh", overflowY: "auto" },
+    handle: { width: 40, height: 4, background: "#24262F", borderRadius: 4, margin: "0 auto 20px" },
+    title: { fontSize: 18, fontWeight: 800, color: "#F2F3F7", marginBottom: 20, fontFamily: "'Plus Jakarta Sans',sans-serif" },
+    label: { fontSize: 11, color: "#7B7E8E", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, display: "block" },
+    input: { width: "100%", background: "#0A0B12", border: "1.5px solid #24262F", borderRadius: 12, padding: "12px 14px", color: "#F2F3F7", fontSize: 15, fontFamily: "inherit", outline: "none", boxSizing: "border-box" },
     group: { marginBottom: 18 },
     catGrid: { display: "flex", flexWrap: "wrap", gap: 8 },
-    catChip: (a, c) => ({ padding: "7px 11px", borderRadius: 10, border: `1.5px solid ${a ? c : "#252836"}`, background: a ? c + "22" : "#0F1117", color: a ? c : "#6B7280", fontSize: 12, fontWeight: a ? 600 : 400, cursor: "pointer", display: "flex", gap: 5, alignItems: "center" }),
+    catChip: (a, c) => ({ padding: "7px 11px", borderRadius: 10, border: `1.5px solid ${a ? c : "#24262F"}`, background: a ? c + "22" : "#0A0B12", color: a ? c : "#7B7E8E", fontSize: 12, fontWeight: a ? 700 : 400, cursor: "pointer", display: "flex", gap: 5, alignItems: "center", transition: "all 0.2s" }),
     memberRow: { display: "flex", gap: 8, flexWrap: "wrap" },
-    memberChip: (a, c) => ({ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 20, border: `1.5px solid ${a ? c : "#252836"}`, background: a ? c + "22" : "#0F1117", color: a ? c : "#6B7280", fontSize: 12, fontWeight: a ? 600 : 400, cursor: "pointer" }),
-    saveBtn: { width: "100%", padding: 14, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", borderRadius: 13, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", marginTop: 4, boxShadow: "0 4px 20px rgba(124,92,252,0.35)" },
-    cancelBtn: { width: "100%", padding: 13, background: "transparent", border: "1.5px solid #252836", borderRadius: 13, color: "#6B7280", fontSize: 14, fontWeight: 500, cursor: "pointer", marginTop: 10 },
-    error: { background: "#FF6B6B22", border: "1px solid #FF6B6B44", borderRadius: 10, padding: "10px 14px", color: "#FF6B6B", fontSize: 13, marginBottom: 16 },
+    memberChip: (a, c) => ({ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 20, border: `1.5px solid ${a ? c : "#24262F"}`, background: a ? c + "22" : "#0A0B12", color: a ? c : "#7B7E8E", fontSize: 12, fontWeight: a ? 700 : 400, cursor: "pointer", transition: "all 0.2s" }),
+    saveBtn: { width: "100%", padding: 14, background: "linear-gradient(135deg,#8B7CFF,#6D5AE0)", border: "none", borderRadius: 13, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", marginTop: 4, boxShadow: "0 4px 20px rgba(139,124,255,0.35)" },
+    cancelBtn: { width: "100%", padding: 13, background: "transparent", border: "1.5px solid #24262F", borderRadius: 13, color: "#7B7E8E", fontSize: 14, fontWeight: 500, cursor: "pointer", marginTop: 10 },
+    error: { background: "#FB718522", border: "1px solid #FB718544", borderRadius: 10, padding: "10px 14px", color: "#FB7185", fontSize: 13, marginBottom: 16 },
   };
 
   return (
-    <div style={S.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div style={S.sheet}>
+    <div className="sw-fadein" style={S.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="sw-sheet-anim" style={S.sheet}>
         <div style={S.handle} />
         <div style={S.title}>{initial?.id ? "Edit Expense" : "Add Expense"}</div>
         {error && <div style={S.error}>⚠️ {error}</div>}
@@ -301,7 +379,7 @@ function ExpenseModal({ onClose, onSave, initial, members, currentUserId, isAdmi
         <div style={S.group}>
           <label style={S.label}>Amount ({cur.code})</label>
           <div style={{ position: "relative" }}>
-            <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#6B7280", fontSize: 15 }}>{cur.symbol}</span>
+            <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#7B7E8E", fontSize: 15 }}>{cur.symbol}</span>
             <input style={{ ...S.input, paddingLeft: cur.symbol.length > 1 ? 38 : 28 }} type="number" placeholder="0.00" min="0" step="0.01" value={form.amount} onChange={(e) => set("amount", e.target.value)} />
           </div>
         </div>
@@ -309,7 +387,7 @@ function ExpenseModal({ onClose, onSave, initial, members, currentUserId, isAdmi
           <label style={S.label}>Category</label>
           <div style={S.catGrid}>
             {CATEGORIES.map((c) => (
-              <button key={c.id} style={S.catChip(form.category === c.id, c.color)} onClick={() => set("category", c.id)}>
+              <button key={c.id} className="sw-press" style={S.catChip(form.category === c.id, c.color)} onClick={() => set("category", c.id)}>
                 {c.icon} {c.label}
               </button>
             ))}
@@ -320,7 +398,7 @@ function ExpenseModal({ onClose, onSave, initial, members, currentUserId, isAdmi
             <label style={S.label}>Paid by</label>
             <div style={S.memberRow}>
               {members.map((m) => (
-                <button key={m.id} style={S.memberChip(form.userId === m.id, m.color)} onClick={() => set("userId", m.id)}>
+                <button key={m.id} className="sw-press" style={S.memberChip(form.userId === m.id, m.color)} onClick={() => set("userId", m.id)}>
                   <Avatar user={m} size={20} />
                   {m.name.split(" ")[0]}
                 </button>
@@ -337,8 +415,8 @@ function ExpenseModal({ onClose, onSave, initial, members, currentUserId, isAdmi
           <input style={S.input} placeholder="Add a note…" value={form.note} onChange={(e) => set("note", e.target.value)} />
         </div>
 
-        <button style={S.saveBtn} onClick={save}>{initial?.id ? "Save Changes" : "Add Expense"}</button>
-        <button style={S.cancelBtn} onClick={onClose}>Cancel</button>
+        <button className="sw-press" style={S.saveBtn} onClick={save}>{initial?.id ? "Save Changes" : "Add Expense"}</button>
+        <button className="sw-press" style={S.cancelBtn} onClick={onClose}>Cancel</button>
       </div>
     </div>
   );
@@ -365,21 +443,21 @@ function InviteModal({ onClose, onInvite, users, group }) {
 
   const S = {
     overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, backdropFilter: "blur(4px)", padding: 20 },
-    card: { background: "#1A1D27", borderRadius: 24, padding: 28, width: "100%", maxWidth: 400, border: "1px solid #252836" },
-    title: { fontSize: 18, fontWeight: 700, color: "#E8E9F0", marginBottom: 6 },
-    sub: { fontSize: 13, color: "#6B7280", marginBottom: 20 },
-    label: { fontSize: 11, color: "#6B7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, display: "block" },
-    input: { width: "100%", background: "#0F1117", border: "1.5px solid #252836", borderRadius: 12, padding: "12px 14px", color: "#E8E9F0", fontSize: 15, fontFamily: "inherit", outline: "none", boxSizing: "border-box", marginBottom: 16 },
+    card: { background: "linear-gradient(165deg, #181A26 0%, #14151E 100%)", borderRadius: 24, padding: 28, width: "100%", maxWidth: 400, border: "1px solid #24262F", boxShadow: "0 20px 60px rgba(0,0,0,0.4)" },
+    title: { fontSize: 18, fontWeight: 800, color: "#F2F3F7", marginBottom: 6, fontFamily: "'Plus Jakarta Sans',sans-serif" },
+    sub: { fontSize: 13, color: "#7B7E8E", marginBottom: 20 },
+    label: { fontSize: 11, color: "#7B7E8E", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, display: "block" },
+    input: { width: "100%", background: "#0A0B12", border: "1.5px solid #24262F", borderRadius: 12, padding: "12px 14px", color: "#F2F3F7", fontSize: 15, fontFamily: "inherit", outline: "none", boxSizing: "border-box", marginBottom: 16 },
     roleRow: { display: "flex", gap: 8, marginBottom: 20 },
-    roleChip: (a) => ({ flex: 1, padding: "10px 0", textAlign: "center", borderRadius: 12, border: `1.5px solid ${a ? "#7C5CFC" : "#252836"}`, background: a ? "#7C5CFC22" : "#0F1117", color: a ? "#7C5CFC" : "#6B7280", fontWeight: a ? 600 : 400, fontSize: 13, cursor: "pointer" }),
-    invBtn: { width: "100%", padding: 14, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", borderRadius: 13, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(124,92,252,0.35)" },
-    cancelBtn: { width: "100%", padding: 13, background: "transparent", border: "1.5px solid #252836", borderRadius: 13, color: "#6B7280", fontSize: 14, cursor: "pointer", marginTop: 10 },
-    error: { background: "#FF6B6B22", border: "1px solid #FF6B6B44", borderRadius: 10, padding: "10px 14px", color: "#FF6B6B", fontSize: 13, marginBottom: 16 },
+    roleChip: (a) => ({ flex: 1, padding: "10px 0", textAlign: "center", borderRadius: 12, border: `1.5px solid ${a ? "#8B7CFF" : "#24262F"}`, background: a ? "#8B7CFF22" : "#0A0B12", color: a ? "#8B7CFF" : "#7B7E8E", fontWeight: a ? 700 : 400, fontSize: 13, cursor: "pointer", transition: "all 0.2s" }),
+    invBtn: { width: "100%", padding: 14, background: "linear-gradient(135deg,#8B7CFF,#6D5AE0)", border: "none", borderRadius: 13, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(139,124,255,0.35)" },
+    cancelBtn: { width: "100%", padding: 13, background: "transparent", border: "1.5px solid #24262F", borderRadius: 13, color: "#7B7E8E", fontSize: 14, cursor: "pointer", marginTop: 10 },
+    error: { background: "#FB718522", border: "1px solid #FB718544", borderRadius: 10, padding: "10px 14px", color: "#FB7185", fontSize: 13, marginBottom: 16 },
   };
 
   return (
-    <div style={S.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div style={S.card}>
+    <div className="sw-fadein" style={S.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="sw-sheet-anim" style={S.card}>
         <div style={S.title}>Invite Family Member</div>
         <div style={S.sub}>They'll get access to the {group.name} group.</div>
         {error && <div style={S.error}>⚠️ {error}</div>}
@@ -389,11 +467,11 @@ function InviteModal({ onClose, onInvite, users, group }) {
         <input style={S.input} placeholder="email@example.com" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
         <label style={S.label}>Role</label>
         <div style={S.roleRow}>
-          <button style={S.roleChip(form.role === "member")} onClick={() => setForm((p) => ({ ...p, role: "member" }))}>👤 Member</button>
-          <button style={S.roleChip(form.role === "admin")} onClick={() => setForm((p) => ({ ...p, role: "admin" }))}>👑 Admin</button>
+          <button className="sw-press" style={S.roleChip(form.role === "member")} onClick={() => setForm((p) => ({ ...p, role: "member" }))}>👤 Member</button>
+          <button className="sw-press" style={S.roleChip(form.role === "admin")} onClick={() => setForm((p) => ({ ...p, role: "admin" }))}>👑 Admin</button>
         </div>
-        <button style={S.invBtn} onClick={invite}>Send Invite →</button>
-        <button style={S.cancelBtn} onClick={onClose}>Cancel</button>
+        <button className="sw-press" style={S.invBtn} onClick={invite}>Send Invite →</button>
+        <button className="sw-press" style={S.cancelBtn} onClick={onClose}>Cancel</button>
       </div>
     </div>
   );
@@ -415,23 +493,23 @@ function ProfileModal({ onClose, onSave, onDeleteAccount, currentUser, users }) 
 
   const S = {
     overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100, backdropFilter: "blur(4px)" },
-    sheet: { background: "#1A1D27", borderRadius: "24px 24px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 480, border: "1px solid #252836", borderBottom: "none", maxHeight: "90vh", overflowY: "auto" },
-    handle: { width: 40, height: 4, background: "#252836", borderRadius: 4, margin: "0 auto 20px" },
-    title: { fontSize: 18, fontWeight: 700, color: "#E8E9F0", marginBottom: 4 },
-    sub: { fontSize: 13, color: "#6B7280", marginBottom: 20 },
-    label: { fontSize: 11, color: "#6B7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, display: "block" },
-    input: { width: "100%", background: "#0F1117", border: "1.5px solid #252836", borderRadius: 12, padding: "12px 14px", color: "#E8E9F0", fontSize: 15, fontFamily: "inherit", outline: "none", boxSizing: "border-box" },
+    sheet: { background: "linear-gradient(165deg, #181A26 0%, #14151E 100%)", borderRadius: "24px 24px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 480, border: "1px solid #24262F", borderBottom: "none", maxHeight: "90vh", overflowY: "auto" },
+    handle: { width: 40, height: 4, background: "#24262F", borderRadius: 4, margin: "0 auto 20px" },
+    title: { fontSize: 18, fontWeight: 800, color: "#F2F3F7", marginBottom: 4, fontFamily: "'Plus Jakarta Sans',sans-serif" },
+    sub: { fontSize: 13, color: "#7B7E8E", marginBottom: 20 },
+    label: { fontSize: 11, color: "#7B7E8E", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, display: "block" },
+    input: { width: "100%", background: "#0A0B12", border: "1.5px solid #24262F", borderRadius: 12, padding: "12px 14px", color: "#F2F3F7", fontSize: 15, fontFamily: "inherit", outline: "none", boxSizing: "border-box" },
     group: { marginBottom: 16 },
-    error: { background: "#FF6B6B22", border: "1px solid #FF6B6B44", borderRadius: 10, padding: "10px 14px", color: "#FF6B6B", fontSize: 13, marginBottom: 16 },
-    success: { background: "#22D3A522", border: "1px solid #22D3A544", borderRadius: 10, padding: "10px 14px", color: "#22D3A5", fontSize: 13, marginBottom: 16 },
-    saveBtn: { width: "100%", padding: 14, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", borderRadius: 13, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", marginTop: 4, boxShadow: "0 4px 20px rgba(124,92,252,0.35)" },
-    cancelBtn: { width: "100%", padding: 13, background: "transparent", border: "1.5px solid #252836", borderRadius: 13, color: "#6B7280", fontSize: 14, fontWeight: 500, cursor: "pointer", marginTop: 10 },
+    error: { background: "#FB718522", border: "1px solid #FB718544", borderRadius: 10, padding: "10px 14px", color: "#FB7185", fontSize: 13, marginBottom: 16 },
+    success: { background: "#34D39922", border: "1px solid #34D39944", borderRadius: 10, padding: "10px 14px", color: "#34D399", fontSize: 13, marginBottom: 16 },
+    saveBtn: { width: "100%", padding: 14, background: "linear-gradient(135deg,#8B7CFF,#6D5AE0)", border: "none", borderRadius: 13, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", marginTop: 4, boxShadow: "0 4px 20px rgba(139,124,255,0.35)" },
+    cancelBtn: { width: "100%", padding: 13, background: "transparent", border: "1.5px solid #24262F", borderRadius: 13, color: "#7B7E8E", fontSize: 14, fontWeight: 500, cursor: "pointer", marginTop: 10 },
     colorGrid: { display: "flex", gap: 10, flexWrap: "wrap" },
-    colorSwatch: (c, active) => ({ width: 36, height: 36, borderRadius: 12, background: c, border: active ? "3px solid #E8E9F0" : "3px solid transparent", cursor: "pointer", boxShadow: active ? `0 0 0 2px ${c}` : "none" }),
-    sectionLabel: { fontSize: 11, color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 24, marginBottom: 12, borderTop: "1px solid #252836", paddingTop: 20 },
-    eyeBtn: { position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#6B7280", cursor: "pointer", fontSize: 16 },
+    colorSwatch: (c, active) => ({ width: 36, height: 36, borderRadius: 12, background: c, border: active ? "3px solid #F2F3F7" : "3px solid transparent", cursor: "pointer", boxShadow: active ? `0 0 0 2px ${c}` : "none", transition: "transform 0.15s, box-shadow 0.15s", transform: active ? "scale(1.08)" : "scale(1)" }),
+    sectionLabel: { fontSize: 11, color: "#7B7E8E", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 24, marginBottom: 12, borderTop: "1px solid #24262F", paddingTop: 20 },
+    eyeBtn: { position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#7B7E8E", cursor: "pointer", fontSize: 16 },
     inputWrap: { position: "relative" },
-    dangerBtn: { width: "100%", padding: 13, background: "#FF6B6B18", border: "1.5px solid #FF6B6B44", borderRadius: 13, color: "#FF6B6B", fontSize: 14, fontWeight: 600, cursor: "pointer", marginTop: 8 },
+    dangerBtn: { width: "100%", padding: 13, background: "#FB718518", border: "1.5px solid #FB718544", borderRadius: 13, color: "#FB7185", fontSize: 14, fontWeight: 600, cursor: "pointer", marginTop: 8 },
   };
 
   function save() {
@@ -460,8 +538,8 @@ function ProfileModal({ onClose, onSave, onDeleteAccount, currentUser, users }) 
   }
 
   return (
-    <div style={S.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div style={S.sheet}>
+    <div className="sw-fadein" style={S.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="sw-sheet-anim" style={S.sheet}>
         <div style={S.handle} />
         <div style={S.title}>Edit Profile</div>
         <div style={S.sub}>Update your account details.</div>
@@ -483,7 +561,7 @@ function ProfileModal({ onClose, onSave, onDeleteAccount, currentUser, users }) 
           <label style={S.label}>Avatar Color</label>
           <div style={S.colorGrid}>
             {MEMBER_COLORS.map((c) => (
-              <div key={c} style={S.colorSwatch(c, color === c)} onClick={() => setColor(c)} />
+              <div key={c} className="sw-press" style={S.colorSwatch(c, color === c)} onClick={() => setColor(c)} />
             ))}
           </div>
         </div>
@@ -506,11 +584,11 @@ function ProfileModal({ onClose, onSave, onDeleteAccount, currentUser, users }) 
           <input style={S.input} type={showPass ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
         </div>
 
-        <button style={S.saveBtn} onClick={save}>Save Changes</button>
-        <button style={S.cancelBtn} onClick={onClose}>Close</button>
+        <button className="sw-press" style={S.saveBtn} onClick={save}>Save Changes</button>
+        <button className="sw-press" style={S.cancelBtn} onClick={onClose}>Close</button>
 
         <div style={S.sectionLabel}>Danger Zone</div>
-        <button style={S.dangerBtn} onClick={() => setShowDeleteConfirm(true)}>🗑️ Delete Account</button>
+        <button className="sw-press" style={S.dangerBtn} onClick={() => setShowDeleteConfirm(true)}>🗑️ Delete Account</button>
 
         {showDeleteConfirm && (
           <ConfirmDialog
@@ -536,16 +614,16 @@ function GroupSettingsModal({ onClose, onSave, onDeleteGroup, group, memberCount
 
   const S = {
     overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, backdropFilter: "blur(4px)", padding: 20 },
-    card: { background: "#1A1D27", borderRadius: 24, padding: 28, width: "100%", maxWidth: 400, border: "1px solid #252836", maxHeight: "90vh", overflowY: "auto" },
-    title: { fontSize: 18, fontWeight: 700, color: "#E8E9F0", marginBottom: 6 },
-    sub: { fontSize: 13, color: "#6B7280", marginBottom: 20 },
-    label: { fontSize: 11, color: "#6B7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, display: "block" },
-    input: { width: "100%", background: "#0F1117", border: "1.5px solid #252836", borderRadius: 12, padding: "12px 14px", color: "#E8E9F0", fontSize: 15, fontFamily: "inherit", outline: "none", boxSizing: "border-box", marginBottom: 16 },
-    saveBtn: { width: "100%", padding: 14, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", borderRadius: 13, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(124,92,252,0.35)" },
-    cancelBtn: { width: "100%", padding: 13, background: "transparent", border: "1.5px solid #252836", borderRadius: 13, color: "#6B7280", fontSize: 14, cursor: "pointer", marginTop: 10 },
-    note: { fontSize: 11, color: "#6B7280", marginTop: -8, marginBottom: 16, lineHeight: 1.5 },
-    sectionLabel: { fontSize: 11, color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 12, marginBottom: 12, borderTop: "1px solid #252836", paddingTop: 20 },
-    dangerBtn: { width: "100%", padding: 13, background: "#FF6B6B18", border: "1.5px solid #FF6B6B44", borderRadius: 13, color: "#FF6B6B", fontSize: 14, fontWeight: 600, cursor: "pointer" },
+    card: { background: "linear-gradient(165deg, #181A26 0%, #14151E 100%)", borderRadius: 24, padding: 28, width: "100%", maxWidth: 400, border: "1px solid #24262F", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.4)" },
+    title: { fontSize: 18, fontWeight: 800, color: "#F2F3F7", marginBottom: 6, fontFamily: "'Plus Jakarta Sans',sans-serif" },
+    sub: { fontSize: 13, color: "#7B7E8E", marginBottom: 20 },
+    label: { fontSize: 11, color: "#7B7E8E", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, display: "block" },
+    input: { width: "100%", background: "#0A0B12", border: "1.5px solid #24262F", borderRadius: 12, padding: "12px 14px", color: "#F2F3F7", fontSize: 15, fontFamily: "inherit", outline: "none", boxSizing: "border-box", marginBottom: 16 },
+    saveBtn: { width: "100%", padding: 14, background: "linear-gradient(135deg,#8B7CFF,#6D5AE0)", border: "none", borderRadius: 13, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(139,124,255,0.35)" },
+    cancelBtn: { width: "100%", padding: 13, background: "transparent", border: "1.5px solid #24262F", borderRadius: 13, color: "#7B7E8E", fontSize: 14, cursor: "pointer", marginTop: 10 },
+    note: { fontSize: 11, color: "#7B7E8E", marginTop: -8, marginBottom: 16, lineHeight: 1.5 },
+    sectionLabel: { fontSize: 11, color: "#7B7E8E", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 12, marginBottom: 12, borderTop: "1px solid #24262F", paddingTop: 20 },
+    dangerBtn: { width: "100%", padding: 13, background: "#FB718518", border: "1.5px solid #FB718544", borderRadius: 13, color: "#FB7185", fontSize: 14, fontWeight: 600, cursor: "pointer" },
   };
 
   function save() {
@@ -554,8 +632,8 @@ function GroupSettingsModal({ onClose, onSave, onDeleteGroup, group, memberCount
   }
 
   return (
-    <div style={S.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div style={S.card}>
+    <div className="sw-fadein" style={S.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="sw-sheet-anim" style={S.card}>
         <div style={S.title}>Group Settings</div>
         <div style={S.sub}>Manage your family group's details.</div>
 
@@ -573,11 +651,11 @@ function GroupSettingsModal({ onClose, onSave, onDeleteGroup, group, memberCount
         </select>
         <div style={S.note}>Changing currency updates how all amounts are displayed across the app. Existing entries keep their numeric value.</div>
 
-        <button style={S.saveBtn} onClick={save}>Save Settings</button>
-        <button style={S.cancelBtn} onClick={onClose}>Cancel</button>
+        <button className="sw-press" style={S.saveBtn} onClick={save}>Save Settings</button>
+        <button className="sw-press" style={S.cancelBtn} onClick={onClose}>Cancel</button>
 
         <div style={S.sectionLabel}>Danger Zone</div>
-        <button style={S.dangerBtn} onClick={() => setShowDeleteConfirm(true)}>🗑️ Delete Group</button>
+        <button className="sw-press" style={S.dangerBtn} onClick={() => setShowDeleteConfirm(true)}>🗑️ Delete Group</button>
 
         {showDeleteConfirm && (
           <ConfirmDialog
@@ -859,50 +937,53 @@ function App() {
   const maxCatTotal    = byCategory[0]?.total || 1;
 
   const S = {
-    root:     { minHeight: "100vh", background: "#0F1117", color: "#E8E9F0", fontFamily: "'Inter',system-ui,sans-serif", display: "flex", flexDirection: "column", maxWidth: 480, margin: "0 auto", position: "relative" },
-    header:   { padding: "20px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "center" },
+    root:     { minHeight: "100vh", background: "transparent", color: "#F2F3F7", fontFamily: "'Inter',system-ui,sans-serif", display: "flex", flexDirection: "column", maxWidth: 480, margin: "0 auto", position: "relative" },
+    header:   { padding: "22px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
     headerLeft: { display: "flex", flexDirection: "column", flex: 1, minWidth: 0 },
+    greeting: { fontSize: 21, fontWeight: 800, color: "#F2F3F7", letterSpacing: "-0.5px", fontFamily: "'Plus Jakarta Sans',sans-serif", display: "flex", alignItems: "center", gap: 6 },
     brandRow: { display: "flex", alignItems: "center", gap: 8 },
-    brand:    { fontSize: 18, fontWeight: 800, color: "#E8E9F0", letterSpacing: "-0.5px" },
-    groupBadge: { fontSize: 11, color: "#7C5CFC", fontWeight: 600, background: "#7C5CFC22", padding: "2px 8px", borderRadius: 20, border: "1px solid #7C5CFC44", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, maxWidth: 180, overflow: "hidden" },
-    headerSub:  { fontSize: 11, color: "#6B7280", marginTop: 3 },
+    brand:    { fontSize: 18, fontWeight: 800, color: "#F2F3F7", letterSpacing: "-0.5px", fontFamily: "'Plus Jakarta Sans',sans-serif" },
+    groupBadge: { fontSize: 11, color: "#8B7CFF", fontWeight: 600, background: "#8B7CFF1A", padding: "4px 10px", borderRadius: 20, border: "1px solid #8B7CFF40", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, maxWidth: 200, overflow: "hidden" },
+    headerSub:  { fontSize: 11, color: "#7B7E8E", marginTop: 3 },
     headerRight: { display: "flex", alignItems: "center", gap: 10 },
-    addBtn:   { width: 42, height: 42, borderRadius: 13, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", color: "#fff", fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 18px rgba(124,92,252,0.4)" },
+    addBtn:   { width: 42, height: 42, borderRadius: 13, background: "linear-gradient(135deg,#8B7CFF,#6D5AE0)", border: "none", color: "#fff", fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 18px rgba(139,124,255,0.4)" },
+    fab: { position: "fixed", bottom: 86, right: "max(20px, calc((100vw - 480px) / 2 + 20px))", width: 58, height: 58, borderRadius: 19, background: "linear-gradient(135deg,#8B7CFF,#6D5AE0)", border: "none", color: "#fff", fontSize: 28, fontWeight: 300, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 10px 30px rgba(139,124,255,0.45), 0 4px 12px rgba(0,0,0,0.3)", zIndex: 70, lineHeight: 1 },
     profileWrap: { position: "relative" },
-    tabs:     { display: "flex", padding: "14px 20px 0", gap: 4, overflowX: "auto" },
-    tab:      (a) => ({ flexShrink: 0, padding: "8px 14px", borderRadius: 10, border: "none", background: a ? "#1A1D27" : "transparent", color: a ? "#7C5CFC" : "#6B7280", fontWeight: a ? 600 : 400, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }),
-    scroll:   { flex: 1, overflowY: "auto", padding: "16px 20px 100px" },
-    card:     { background: "#1A1D27", borderRadius: 20, padding: 20, marginBottom: 16, border: "1px solid #252836" },
-    sectionTitle: { fontSize: 11, fontWeight: 700, color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.9, marginBottom: 14 },
+    // Floating bottom navigation bar
+    navBar: { position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)", width: "calc(100% - 32px)", maxWidth: 448, display: "flex", justifyContent: "space-around", alignItems: "center", background: "rgba(21,22,31,0.78)", backdropFilter: "blur(20px) saturate(160%)", WebkitBackdropFilter: "blur(20px) saturate(160%)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 24, padding: "10px 8px", boxShadow: "0 12px 36px rgba(0,0,0,0.45)", zIndex: 60 },
+    navItem: (a) => ({ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "7px 14px", borderRadius: 16, border: "none", cursor: "pointer", background: a ? "linear-gradient(135deg,#8B7CFF26,#6D5AE01A)" : "transparent", transition: "background 0.25s" }),
+    navIcon: (a) => ({ fontSize: 18, opacity: a ? 1 : 0.55, filter: a ? "none" : "grayscale(35%)", transition: "opacity 0.2s" }),
+    navLabel: (a) => ({ fontSize: 10, fontWeight: a ? 700 : 500, color: a ? "#8B7CFF" : "#7B7E8E", letterSpacing: 0.2 }),
+    scroll:   { flex: 1, overflowY: "auto", padding: "16px 20px 110px" },
+    card:     { background: "linear-gradient(165deg, #181A26 0%, #14151E 100%)", borderRadius: 22, padding: 20, marginBottom: 16, border: "1px solid #24262F", boxShadow: "0 4px 16px rgba(0,0,0,0.18)" },
+    sectionTitle: { fontSize: 11, fontWeight: 700, color: "#7B7E8E", textTransform: "uppercase", letterSpacing: 0.9, marginBottom: 14, fontFamily: "'Plus Jakarta Sans',sans-serif" },
     statsRow: { display: "flex", gap: 10, marginBottom: 16 },
-    statCard: (c) => ({ flex: 1, background: "#1A1D27", borderRadius: 16, padding: "14px 14px", border: `1px solid ${c}22` }),
-    statLabel: { fontSize: 10, color: "#6B7280", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 },
-    statVal:  (c) => ({ fontSize: 18, fontWeight: 700, color: c, fontVariantNumeric: "tabular-nums" }),
+    statCard: (c) => ({ flex: 1, background: "linear-gradient(165deg, #181A26 0%, #14151E 100%)", borderRadius: 16, padding: "14px 14px", border: `1px solid ${c}22` }),
+    statLabel: { fontSize: 10, color: "#7B7E8E", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 },
+    statVal:  (c) => ({ fontSize: 18, fontWeight: 800, color: c, fontVariantNumeric: "tabular-nums", fontFamily: "'Plus Jakarta Sans',sans-serif" }),
     txItem:   { display: "flex", alignItems: "center", gap: 10, padding: "12px 0" },
-    txIcon:   (c) => ({ width: 40, height: 40, borderRadius: 12, background: c + "22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, flexShrink: 0 }),
+    txIcon:   (c) => ({ width: 40, height: 40, borderRadius: 13, background: `linear-gradient(155deg, ${c}33, ${c}14)`, border: `1px solid ${c}2A`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, flexShrink: 0 }),
     txInfo:   { flex: 1, minWidth: 0 },
-    txTitle:  { fontSize: 14, fontWeight: 500, color: "#E8E9F0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
-    txMeta:   { fontSize: 11, color: "#6B7280", marginTop: 2, display: "flex", alignItems: "center", gap: 4 },
-    txAmount: { fontSize: 14, fontWeight: 700, color: "#FF6B6B", fontVariantNumeric: "tabular-nums" },
+    txTitle:  { fontSize: 14, fontWeight: 500, color: "#F2F3F7", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+    txMeta:   { fontSize: 11, color: "#7B7E8E", marginTop: 2, display: "flex", alignItems: "center", gap: 4 },
+    txAmount: { fontSize: 14, fontWeight: 700, color: "#FB7185", fontVariantNumeric: "tabular-nums" },
     iconBtn:  (c) => ({ width: 28, height: 28, borderRadius: 8, background: c + "18", border: "none", color: c, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }),
-    searchBar: { display: "flex", alignItems: "center", background: "#1A1D27", borderRadius: 13, padding: "0 14px", marginBottom: 12, border: "1px solid #252836" },
-    searchInput: { flex: 1, background: "none", border: "none", outline: "none", color: "#E8E9F0", fontSize: 14, padding: "11px 8px", fontFamily: "inherit" },
+    searchBar: { display: "flex", alignItems: "center", background: "#15161F", borderRadius: 13, padding: "0 14px", marginBottom: 12, border: "1px solid #24262F" },
+    searchInput: { flex: 1, background: "none", border: "none", outline: "none", color: "#F2F3F7", fontSize: 14, padding: "11px 8px", fontFamily: "inherit" },
     filterRow: { display: "flex", gap: 7, marginBottom: 14, overflowX: "auto", paddingBottom: 2 },
-    chip:     (a, c) => ({ flexShrink: 0, padding: "5px 11px", borderRadius: 20, border: `1.5px solid ${a ? c : "#252836"}`, background: a ? c + "22" : "transparent", color: a ? c : "#6B7280", fontSize: 11, fontWeight: a ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }),
-    dateLabel: { fontSize: 11, fontWeight: 700, color: "#6B7280", marginBottom: 8, marginTop: 4 },
-    memberCard: { display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid #1E2130" },
-    barTrack:  { height: 4, background: "#252836", borderRadius: 4, overflow: "hidden", marginTop: 5, flex: 1 },
-    barFill:   (c, p) => ({ height: "100%", width: `${p * 100}%`, background: c, borderRadius: 4, transition: "width 0.6s" }),
-    profileMenu: { position: "absolute", top: 50, right: 0, background: "#1A1D27", border: "1px solid #252836", borderRadius: 16, padding: 8, minWidth: 210, zIndex: 50, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" },
-    menuItem: (danger) => ({ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, cursor: "pointer", background: "none", border: "none", width: "100%", textAlign: "left", color: danger ? "#FF6B6B" : "#E8E9F0", fontSize: 13, fontFamily: "inherit" }),
-    toast: { position: "fixed", bottom: 90, left: "50%", transform: "translateX(-50%)", background: "#1A1D27", border: "1px solid #252836", borderRadius: 12, padding: "10px 18px", fontSize: 13, color: "#E8E9F0", zIndex: 300, boxShadow: "0 4px 20px rgba(0,0,0,0.3)", whiteSpace: "nowrap" },
-    empty: { textAlign: "center", padding: "40px 20px", color: "#6B7280" },
-    delOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 20 },
-    delCard: { background: "#1A1D27", borderRadius: 20, padding: 24, width: "100%", maxWidth: 320, border: "1px solid #252836" },
+    chip:     (a, c) => ({ flexShrink: 0, padding: "5px 11px", borderRadius: 20, border: `1.5px solid ${a ? c : "#24262F"}`, background: a ? c + "22" : "transparent", color: a ? c : "#7B7E8E", fontSize: 11, fontWeight: a ? 700 : 400, cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.2s" }),
+    dateLabel: { fontSize: 11, fontWeight: 700, color: "#7B7E8E", marginBottom: 8, marginTop: 4 },
+    memberCard: { display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid #1D1E28" },
+    barTrack:  { height: 4, background: "#24262F", borderRadius: 4, overflow: "hidden", marginTop: 5, flex: 1 },
+    barFill:   (c, p) => ({ height: "100%", width: `${p * 100}%`, background: `linear-gradient(90deg, ${c}CC, ${c})`, borderRadius: 4, transition: "width 0.6s" }),
+    profileMenu: { position: "absolute", top: 50, right: 0, background: "#1B1D29", border: "1px solid #24262F", borderRadius: 16, padding: 8, minWidth: 210, zIndex: 50, boxShadow: "0 8px 32px rgba(0,0,0,0.45)" },
+    menuItem: (danger) => ({ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, cursor: "pointer", background: "none", border: "none", width: "100%", textAlign: "left", color: danger ? "#FB7185" : "#F2F3F7", fontSize: 13, fontFamily: "inherit" }),
+    toast: { position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "#1B1D29", border: "1px solid #24262F", borderRadius: 12, padding: "10px 18px", fontSize: 13, color: "#F2F3F7", zIndex: 300, boxShadow: "0 4px 20px rgba(0,0,0,0.4)", whiteSpace: "nowrap" },
+    empty: { textAlign: "center", padding: "40px 20px", color: "#7B7E8E" },
     // Group switcher
     switcherOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 150, backdropFilter: "blur(4px)" },
-    switcherSheet: { background: "#1A1D27", borderRadius: "24px 24px 0 0", padding: "24px 20px 36px", width: "100%", maxWidth: 480, border: "1px solid #252836", borderBottom: "none" },
-    groupRow: (active) => ({ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, marginBottom: 8, border: `1.5px solid ${active ? "#7C5CFC" : "#252836"}`, background: active ? "#7C5CFC18" : "#0F1117", cursor: "pointer" }),
+    switcherSheet: { background: "#15161F", borderRadius: "24px 24px 0 0", padding: "24px 20px 36px", width: "100%", maxWidth: 480, border: "1px solid #24262F", borderBottom: "none" },
+    groupRow: (active) => ({ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, marginBottom: 8, border: `1.5px solid ${active ? "#8B7CFF" : "#24262F"}`, background: active ? "#8B7CFF18" : "#0A0B12", cursor: "pointer" }),
   };
 
   return (
@@ -910,30 +991,29 @@ function App() {
       {/* ── Header ── */}
       <div style={S.header}>
         <div style={S.headerLeft}>
-          <div style={S.brandRow}>
-            <span style={{ fontSize: 18 }}>💳</span>
-            <span style={S.brand}>Spendwise</span>
+          <div style={S.greeting}>
+            <span>{greeting()}, {currentUser.name.split(" ")[0]}</span>
+            <span>{greetingEmoji()}</span>
           </div>
           <div
-            style={{ ...S.groupBadge, marginTop: 6 }}
+            style={{ ...S.groupBadge, marginTop: 8 }}
             onClick={() => setShowGroupSwitcher(true)}
           >
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.name}</span>
             <span style={{ flexShrink: 0 }}>▾</span>
           </div>
-          <div style={S.headerSub}>{members.length} members{myGroups.length > 1 ? ` · ${myGroups.length} groups` : ""}</div>
+          <div style={S.headerSub}>{members.length} member{members.length === 1 ? "" : "s"}{myGroups.length > 1 ? ` · ${myGroups.length} groups` : ""}</div>
         </div>
         <div style={S.headerRight}>
-          <button style={S.addBtn} onClick={openAdd} title="Add expense">＋</button>
           <div style={S.profileWrap}>
-            <div style={{ cursor: "pointer" }} onClick={() => setShowProfileMenu((p) => !p)}>
-              <Avatar user={currentUser} size={38} />
+            <div className="sw-press" style={{ cursor: "pointer" }} onClick={() => setShowProfileMenu((p) => !p)}>
+              <Avatar user={currentUser} size={42} />
             </div>
             {showProfileMenu && (
-              <div style={S.profileMenu}>
-                <div style={{ padding: "8px 12px 12px", borderBottom: "1px solid #252836", marginBottom: 4 }}>
+              <div className="sw-fadein" style={S.profileMenu}>
+                <div style={{ padding: "8px 12px 12px", borderBottom: "1px solid #24262F", marginBottom: 4 }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{currentUser.name}</div>
-                  <div style={{ fontSize: 11, color: "#6B7280" }}>{currentUser.email}</div>
+                  <div style={{ fontSize: 11, color: "#7B7E8E" }}>{currentUser.email}</div>
                   <div style={{ fontSize: 10, color: currentUser.color, fontWeight: 600, marginTop: 3, textTransform: "uppercase" }}>{isAdmin ? "admin" : "member"} · {group.name}</div>
                 </div>
                 {isAdmin && (
@@ -972,27 +1052,24 @@ function App() {
         </div>
       </div>
 
-      {/* ── Tabs ── */}
-      <div style={S.tabs}>
-        {[["dashboard","📊 Dashboard"],["transactions","📋 Expenses"],["members","👨‍👩‍👧 Family"],["analytics","📈 Analytics"]].map(([id,lbl]) => (
-          <button key={id} style={S.tab(activeTab === id)} onClick={() => { setActiveTab(id); setShowProfileMenu(false); }}>{lbl}</button>
-        ))}
-      </div>
+      {/* ── Floating Action Button ── */}
+      <button className="sw-press" style={S.fab} onClick={openAdd} title="Add expense">＋</button>
 
       <div style={S.scroll} onClick={() => setShowProfileMenu(false)}>
 
         {/* ══════════════ DASHBOARD ══════════════ */}
         {activeTab === "dashboard" && (
-          <>
+          <div className="sw-fadein" key="dashboard">
             {members.length === 1 && isAdmin && (
-              <div style={{ ...S.card, display: "flex", alignItems: "center", gap: 14, background: "linear-gradient(135deg,#7C5CFC18,#5B3FD418)", borderColor: "#7C5CFC33" }}>
+              <div style={{ ...S.card, display: "flex", alignItems: "center", gap: 14, background: "linear-gradient(135deg,#8B7CFF18,#6D5AE018)", borderColor: "#8B7CFF33" }}>
                 <div style={{ fontSize: 28 }}>👋</div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#E8E9F0", marginBottom: 2 }}>You're flying solo</div>
-                  <div style={{ fontSize: 12, color: "#6B7280" }}>Invite family members to track shared expenses together.</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#F2F3F7", marginBottom: 2 }}>You're flying solo</div>
+                  <div style={{ fontSize: 12, color: "#7B7E8E" }}>Invite family members to track shared expenses together.</div>
                 </div>
                 <button
-                  style={{ flexShrink: 0, padding: "8px 14px", background: "#7C5CFC", border: "none", borderRadius: 10, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                  className="sw-press"
+                  style={{ flexShrink: 0, padding: "8px 14px", background: "#8B7CFF", border: "none", borderRadius: 10, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
                   onClick={() => setShowInvModal(true)}
                 >
                   Invite
@@ -1000,14 +1077,14 @@ function App() {
               </div>
             )}
             <div style={{ ...S.card, textAlign: "center" }}>
-              <div style={{ fontSize: 11, color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4 }}>Family Budget</div>
+              <div style={{ fontSize: 11, color: "#7B7E8E", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4 }}>Family Budget</div>
               <div style={{ display: "flex", justifyContent: "center" }}>
                 <RadialGauge spent={totalSpent} budget={group.budget} currency={group.currency} />
               </div>
               <div style={{ display: "flex", justifyContent: "space-around", marginTop: 8 }}>
-                {[["Spent","#FF6B6B",totalSpent],["Remaining",remaining>=0?"#22D3A5":"#FF6B6B",Math.abs(remaining)],["Budget","#7C5CFC",group.budget]].map(([l,c,v]) => (
+                {[["Spent","#FB7185",totalSpent],["Remaining",remaining>=0?"#34D399":"#FB7185",Math.abs(remaining)],["Budget","#8B7CFF",group.budget]].map(([l,c,v]) => (
                   <div key={l}>
-                    <div style={{ fontSize: 10, color: "#6B7280" }}>{l}</div>
+                    <div style={{ fontSize: 10, color: "#7B7E8E" }}>{l}</div>
                     <div style={{ fontSize: 15, fontWeight: 700, color: c }}>{money(v, group.currency)}</div>
                   </div>
                 ))}
@@ -1015,9 +1092,9 @@ function App() {
             </div>
 
             <div style={S.statsRow}>
-              <div style={S.statCard("#22D3A5")}>
+              <div style={S.statCard("#34D399")}>
                 <div style={S.statLabel}>Transactions</div>
-                <div style={S.statVal("#22D3A5")}>{groupExpenses.length}</div>
+                <div style={S.statVal("#34D399")}>{groupExpenses.length}</div>
               </div>
               <div style={S.statCard("#FBBF24")}>
                 <div style={S.statLabel}>Members</div>
@@ -1029,7 +1106,7 @@ function App() {
               </div>
             </div>
 
-            <div style={S.card}>
+            <div className="sw-card-hover" style={S.card}>
               <div style={S.sectionTitle}>Member Spending</div>
               {byMember.map((m) => (
                 <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
@@ -1043,7 +1120,7 @@ function App() {
                       <div style={{ ...S.barTrack, marginTop: 4 }}>
                         <div style={S.barFill(m.color, m.total / maxMemberTotal)} />
                       </div>
-                      <span style={{ fontSize: 10, color: "#6B7280", flexShrink: 0 }}>{m.count} txn</span>
+                      <span style={{ fontSize: 10, color: "#7B7E8E", flexShrink: 0 }}>{m.count} txn</span>
                     </div>
                   </div>
                 </div>
@@ -1061,7 +1138,7 @@ function App() {
               const cat  = getCat(e.category);
               const user = users.find((u) => u.id === e.userId);
               return (
-                <div key={e.id} style={{ ...S.txItem, borderBottom: "1px solid #1A1D27" }}>
+                <div key={e.id} style={{ ...S.txItem, borderBottom: "1px solid #15161F" }}>
                   <div style={S.txIcon(cat.color)}>{cat.icon}</div>
                   <div style={S.txInfo}>
                     <div style={S.txTitle}>{e.title}</div>
@@ -1075,35 +1152,35 @@ function App() {
               );
             })}
             {groupExpenses.length > 5 && (
-              <button onClick={() => setActiveTab("transactions")} style={{ width: "100%", padding: 11, marginTop: 8, background: "#1A1D27", border: "1.5px solid #252836", borderRadius: 12, color: "#7C5CFC", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              <button className="sw-press" onClick={() => setActiveTab("transactions")} style={{ width: "100%", padding: 11, marginTop: 8, background: "#15161F", border: "1.5px solid #24262F", borderRadius: 12, color: "#8B7CFF", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 View all {groupExpenses.length} expenses →
               </button>
             )}
-          </>
+          </div>
         )}
 
         {/* ══════════════ TRANSACTIONS ══════════════ */}
         {activeTab === "transactions" && (
-          <>
+          <div className="sw-fadein" key="transactions">
             <div style={S.searchBar}>
-              <span style={{ fontSize: 14, color: "#6B7280" }}>🔍</span>
+              <span style={{ fontSize: 14, color: "#7B7E8E" }}>🔍</span>
               <input style={S.searchInput} placeholder="Search expenses…" value={search} onChange={(e) => setSearch(e.target.value)} />
-              {search && <button onClick={() => setSearch("")} style={{ background: "none", border: "none", color: "#6B7280", cursor: "pointer" }}>✕</button>}
+              {search && <button onClick={() => setSearch("")} style={{ background: "none", border: "none", color: "#7B7E8E", cursor: "pointer" }}>✕</button>}
             </div>
 
             <div style={S.filterRow}>
-              <button style={S.chip(memberFilter === "all", "#7C5CFC")} onClick={() => setMemberFilter("all")}>Everyone</button>
+              <button className="sw-press" style={S.chip(memberFilter === "all", "#8B7CFF")} onClick={() => setMemberFilter("all")}>Everyone</button>
               {members.map((m) => (
-                <button key={m.id} style={S.chip(memberFilter === m.id, m.color)} onClick={() => setMemberFilter(memberFilter === m.id ? "all" : m.id)}>
+                <button key={m.id} className="sw-press" style={S.chip(memberFilter === m.id, m.color)} onClick={() => setMemberFilter(memberFilter === m.id ? "all" : m.id)}>
                   {m.name.split(" ")[0]}
                 </button>
               ))}
             </div>
 
             <div style={S.filterRow}>
-              <button style={S.chip(filter === "all", "#6B7280")} onClick={() => setFilter("all")}>All</button>
+              <button className="sw-press" style={S.chip(filter === "all", "#7B7E8E")} onClick={() => setFilter("all")}>All</button>
               {CATEGORIES.map((c) => (
-                <button key={c.id} style={S.chip(filter === c.id, c.color)} onClick={() => setFilter(filter === c.id ? "all" : c.id)}>
+                <button key={c.id} className="sw-press" style={S.chip(filter === c.id, c.color)} onClick={() => setFilter(filter === c.id ? "all" : c.id)}>
                   {c.icon} {c.label}
                 </button>
               ))}
@@ -1118,13 +1195,13 @@ function App() {
             ) : groupByDate(filtered).map(([date, items]) => (
               <div key={date}>
                 <div style={S.dateLabel}>{formatDateLabel(date)}</div>
-                <div style={S.card}>
+                <div className="sw-card-hover" style={S.card}>
                   {items.map((e, i) => {
                     const cat  = getCat(e.category);
                     const user = users.find((u) => u.id === e.userId);
                     const canEdit = isAdmin || e.userId === currentUser.id;
                     return (
-                      <div key={e.id} style={{ ...S.txItem, borderBottom: i < items.length - 1 ? "1px solid #1E2130" : "none" }}>
+                      <div key={e.id} style={{ ...S.txItem, borderBottom: i < items.length - 1 ? "1px solid #1D1E28" : "none" }}>
                         <div style={S.txIcon(cat.color)}>{cat.icon}</div>
                         <div style={S.txInfo}>
                           <div style={S.txTitle}>{e.title}</div>
@@ -1138,8 +1215,8 @@ function App() {
                           <div style={S.txAmount}>-{money(e.amount, group.currency)}</div>
                           {canEdit && (
                             <div style={{ display: "flex", gap: 4 }}>
-                              <button style={S.iconBtn("#7C5CFC")} onClick={() => openEdit(e)}>✏️</button>
-                              <button style={S.iconBtn("#FF6B6B")} onClick={() => setDeleteId(e.id)}>🗑️</button>
+                              <button className="sw-press" style={S.iconBtn("#8B7CFF")} onClick={() => openEdit(e)}>✏️</button>
+                              <button className="sw-press" style={S.iconBtn("#FB7185")} onClick={() => setDeleteId(e.id)}>🗑️</button>
                             </div>
                           )}
                         </div>
@@ -1149,14 +1226,14 @@ function App() {
                 </div>
               </div>
             ))}
-          </>
+          </div>
         )}
 
         {/* ══════════════ MEMBERS ══════════════ */}
         {activeTab === "members" && (
-          <>
+          <div className="sw-fadein" key="members">
             {isAdmin && (
-              <button style={{ width: "100%", padding: 14, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", borderRadius: 14, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 16, boxShadow: "0 4px 18px rgba(124,92,252,0.35)" }}
+              <button className="sw-press" style={{ width: "100%", padding: 14, background: "linear-gradient(135deg,#8B7CFF,#6D5AE0)", border: "none", borderRadius: 14, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 16, boxShadow: "0 4px 18px rgba(139,124,255,0.35)" }}
                 onClick={() => setShowInvModal(true)}>
                 + Invite Family Member
               </button>
@@ -1167,24 +1244,24 @@ function App() {
               const isSelf = m.id === currentUser.id;
               const canManage = isAdmin; // admins can manage everyone (including self, with safeguards below)
               return (
-                <div key={m.id} style={S.card}>
+                <div key={m.id} className="sw-card-hover" style={S.card}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
                     <Avatar user={m} size={46} />
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 16, fontWeight: 700 }}>{m.name}</span>
                         <span style={{ fontSize: 10, color: m.color, fontWeight: 600, background: m.color + "22", padding: "2px 8px", borderRadius: 20, textTransform: "uppercase" }}>{m.role}</span>
-                        {isSelf && <span style={{ fontSize: 10, color: "#6B7280" }}>(you)</span>}
+                        {isSelf && <span style={{ fontSize: 10, color: "#7B7E8E" }}>(you)</span>}
                       </div>
-                      <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>{m.email}</div>
+                      <div style={{ fontSize: 12, color: "#7B7E8E", marginTop: 2 }}>{m.email}</div>
                     </div>
                   </div>
 
                   {/* Member stats row */}
                   <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-                    {[["Total Spent", m.color, `${money(m.total, group.currency)}`],["Transactions","#6B7280",m.count],["Share","#FBBF24",totalSpent > 0 ? `${Math.round((m.total/totalSpent)*100)}%` : "0%"]].map(([l,c,v]) => (
-                      <div key={l} style={{ flex: 1, background: "#0F1117", borderRadius: 12, padding: "10px 12px", border: `1px solid ${c}22` }}>
-                        <div style={{ fontSize: 9, color: "#6B7280", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{l}</div>
+                    {[["Total Spent", m.color, `${money(m.total, group.currency)}`],["Transactions","#7B7E8E",m.count],["Share","#FBBF24",totalSpent > 0 ? `${Math.round((m.total/totalSpent)*100)}%` : "0%"]].map(([l,c,v]) => (
+                      <div key={l} style={{ flex: 1, background: "#0A0B12", borderRadius: 12, padding: "10px 12px", border: `1px solid ${c}22` }}>
+                        <div style={{ fontSize: 9, color: "#7B7E8E", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>{l}</div>
                         <div style={{ fontSize: 15, fontWeight: 700, color: c }}>{v}</div>
                       </div>
                     ))}
@@ -1195,21 +1272,24 @@ function App() {
                     <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
                       {m.role === "member" ? (
                         <button
-                          style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "1.5px solid #7C5CFC44", background: "#7C5CFC18", color: "#7C5CFC", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                          className="sw-press"
+                          style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "1.5px solid #8B7CFF44", background: "#8B7CFF18", color: "#8B7CFF", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                           onClick={() => setMemberRole(m.id, "admin")}
                         >
                           👑 Make Admin
                         </button>
                       ) : (
                         <button
-                          style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "1.5px solid #25283688", background: "#0F1117", color: "#6B7280", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                          className="sw-press"
+                          style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "1.5px solid #24262F88", background: "#0A0B12", color: "#7B7E8E", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                           onClick={() => setMemberRole(m.id, "member")}
                         >
                           👤 Make Member
                         </button>
                       )}
                       <button
-                        style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "1.5px solid #FF6B6B44", background: "#FF6B6B18", color: "#FF6B6B", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                        className="sw-press"
+                        style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "1.5px solid #FB718544", background: "#FB718518", color: "#FB7185", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                         onClick={() => setRemoveMemberId(m.id)}
                       >
                         {isSelf ? "🚪 Leave Group" : "🗑️ Remove"}
@@ -1219,7 +1299,8 @@ function App() {
                   {!canManage && isSelf && (
                     <div style={{ marginBottom: 14 }}>
                       <button
-                        style={{ width: "100%", padding: "9px 0", borderRadius: 10, border: "1.5px solid #FF6B6B44", background: "#FF6B6B18", color: "#FF6B6B", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                        className="sw-press"
+                        style={{ width: "100%", padding: "9px 0", borderRadius: 10, border: "1.5px solid #FB718544", background: "#FB718518", color: "#FB7185", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                         onClick={() => setRemoveMemberId(m.id)}
                       >
                         🚪 Leave Group
@@ -1228,24 +1309,24 @@ function App() {
                   )}
 
                   {/* Recent expenses */}
-                  <div style={{ fontSize: 10, color: "#6B7280", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 8 }}>Recent Expenses</div>
+                  <div style={{ fontSize: 10, color: "#7B7E8E", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 8 }}>Recent Expenses</div>
                   {myExpenses.length === 0 ? (
-                    <div style={{ fontSize: 13, color: "#6B7280", textAlign: "center", padding: "12px 0" }}>No expenses yet</div>
+                    <div style={{ fontSize: 13, color: "#7B7E8E", textAlign: "center", padding: "12px 0" }}>No expenses yet</div>
                   ) : myExpenses.slice(0, 3).map((e, i) => {
                     const cat = getCat(e.category);
                     return (
-                      <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: i > 0 ? "1px solid #1E2130" : "none" }}>
+                      <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: i > 0 ? "1px solid #1D1E28" : "none" }}>
                         <div style={{ ...S.txIcon(cat.color), width: 32, height: 32, borderRadius: 10, fontSize: 14 }}>{cat.icon}</div>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 13, fontWeight: 500 }}>{e.title}</div>
-                          <div style={{ fontSize: 10, color: "#6B7280" }}>{formatDateLabel(e.date)}</div>
+                          <div style={{ fontSize: 10, color: "#7B7E8E" }}>{formatDateLabel(e.date)}</div>
                         </div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: "#FF6B6B" }}>-{money(e.amount, group.currency)}</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#FB7185" }}>-{money(e.amount, group.currency)}</div>
                       </div>
                     );
                   })}
                   {myExpenses.length > 3 && (
-                    <div style={{ fontSize: 12, color: "#7C5CFC", textAlign: "center", paddingTop: 8, cursor: "pointer" }}
+                    <div style={{ fontSize: 12, color: "#8B7CFF", textAlign: "center", paddingTop: 8, cursor: "pointer" }}
                       onClick={() => { setMemberFilter(m.id); setActiveTab("transactions"); }}>
                       +{myExpenses.length - 3} more →
                     </div>
@@ -1253,27 +1334,27 @@ function App() {
                 </div>
               );
             })}
-          </>
+          </div>
         )}
 
         {/* ══════════════ ANALYTICS ══════════════ */}
         {activeTab === "analytics" && (
-          <>
+          <div className="sw-fadein" key="analytics">
             <div style={S.statsRow}>
-              <div style={S.statCard("#7C5CFC")}>
+              <div style={S.statCard("#8B7CFF")}>
                 <div style={S.statLabel}>Total Spent</div>
-                <div style={S.statVal("#7C5CFC")}>{money(totalSpent, group.currency)}</div>
+                <div style={S.statVal("#8B7CFF")}>{money(totalSpent, group.currency)}</div>
               </div>
-              <div style={S.statCard(remaining >= 0 ? "#22D3A5" : "#FF6B6B")}>
+              <div style={S.statCard(remaining >= 0 ? "#34D399" : "#FB7185")}>
                 <div style={S.statLabel}>{remaining >= 0 ? "Remaining" : "Over budget"}</div>
-                <div style={S.statVal(remaining >= 0 ? "#22D3A5" : "#FF6B6B")}>{money(Math.abs(remaining), group.currency)}</div>
+                <div style={S.statVal(remaining >= 0 ? "#34D399" : "#FB7185")}>{money(Math.abs(remaining), group.currency)}</div>
               </div>
             </div>
 
-            <div style={S.card}>
+            <div className="sw-card-hover" style={S.card}>
               <div style={S.sectionTitle}>Spending by Member</div>
               {byMember.length === 0 ? (
-                <div style={{ color: "#6B7280", fontSize: 13, textAlign: "center", padding: "16px 0" }}>No data yet</div>
+                <div style={{ color: "#7B7E8E", fontSize: 13, textAlign: "center", padding: "16px 0" }}>No data yet</div>
               ) : byMember.map((m) => (
                 <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
                   <Avatar user={m} size={32} />
@@ -1286,17 +1367,17 @@ function App() {
                       <div style={S.barFill(m.color, m.total / maxMemberTotal)} />
                     </div>
                   </div>
-                  <div style={{ fontSize: 11, color: "#6B7280", width: 28, textAlign: "right" }}>
+                  <div style={{ fontSize: 11, color: "#7B7E8E", width: 28, textAlign: "right" }}>
                     {totalSpent > 0 ? `${Math.round((m.total / totalSpent) * 100)}%` : "0%"}
                   </div>
                 </div>
               ))}
             </div>
 
-            <div style={S.card}>
+            <div className="sw-card-hover" style={S.card}>
               <div style={S.sectionTitle}>Spending by Category</div>
               {byCategory.length === 0 ? (
-                <div style={{ color: "#6B7280", fontSize: 13, textAlign: "center", padding: "16px 0" }}>No data yet</div>
+                <div style={{ color: "#7B7E8E", fontSize: 13, textAlign: "center", padding: "16px 0" }}>No data yet</div>
               ) : byCategory.map((c) => (
                 <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
                   <div style={{ width: 34, height: 34, borderRadius: 10, background: c.color + "22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0 }}>{c.icon}</div>
@@ -1309,35 +1390,35 @@ function App() {
                       <div style={S.barFill(c.color, c.total / maxCatTotal)} />
                     </div>
                   </div>
-                  <div style={{ fontSize: 11, color: "#6B7280", width: 28, textAlign: "right" }}>
+                  <div style={{ fontSize: 11, color: "#7B7E8E", width: 28, textAlign: "right" }}>
                     {totalSpent > 0 ? `${Math.round((c.total / totalSpent) * 100)}%` : "0%"}
                   </div>
                 </div>
               ))}
             </div>
 
-            <div style={S.card}>
+            <div className="sw-card-hover" style={S.card}>
               <div style={S.sectionTitle}>Fair Share Analysis</div>
               {members.length === 0 ? (
-                <div style={{ color: "#6B7280", fontSize: 13, textAlign: "center", padding: "16px 0" }}>No members yet</div>
+                <div style={{ color: "#7B7E8E", fontSize: 13, textAlign: "center", padding: "16px 0" }}>No members yet</div>
               ) : (
                 <>
-                  <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 14 }}>Equal split of {money(totalSpent, group.currency)} among {members.length} members = {money(totalSpent / members.length, group.currency)} each</div>
+                  <div style={{ fontSize: 12, color: "#7B7E8E", marginBottom: 14 }}>Equal split of {money(totalSpent, group.currency)} among {members.length} members = {money(totalSpent / members.length, group.currency)} each</div>
                   {byMember.map((m) => {
                     const fairShare = totalSpent / members.length;
                     const diff = m.total - fairShare;
                     return (
-                      <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #1E2130" }}>
+                      <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid #1D1E28" }}>
                         <Avatar user={m} size={30} />
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 13, fontWeight: 500 }}>{m.name.split(" ")[0]}</div>
-                          <div style={{ fontSize: 11, color: "#6B7280" }}>paid {money(m.total, group.currency)}</div>
+                          <div style={{ fontSize: 11, color: "#7B7E8E" }}>paid {money(m.total, group.currency)}</div>
                         </div>
                         <div style={{ textAlign: "right" }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: diff >= 0 ? "#22D3A5" : "#FF6B6B" }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: diff >= 0 ? "#34D399" : "#FB7185" }}>
                             {diff >= 0 ? "+" : ""}{money(diff, group.currency)}
                           </div>
-                          <div style={{ fontSize: 10, color: "#6B7280" }}>{diff >= 0 ? "overpaid" : "underpaid"}</div>
+                          <div style={{ fontSize: 10, color: "#7B7E8E" }}>{diff >= 0 ? "overpaid" : "underpaid"}</div>
                         </div>
                       </div>
                     );
@@ -1345,7 +1426,7 @@ function App() {
                 </>
               )}
             </div>
-          </>
+          </div>
         )}
       </div>
 
@@ -1388,28 +1469,29 @@ function App() {
 
       {showGroupSwitcher && (
         <div style={S.switcherOverlay} onClick={(e) => e.target === e.currentTarget && setShowGroupSwitcher(false)}>
-          <div style={S.switcherSheet}>
-            <div style={{ width: 40, height: 4, background: "#252836", borderRadius: 4, margin: "0 auto 20px" }} />
+          <div className="sw-sheet-anim" style={S.switcherSheet}>
+            <div style={{ width: 40, height: 4, background: "#24262F", borderRadius: 4, margin: "0 auto 20px" }} />
             <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Your Family Groups</div>
             {myGroups.map((g) => (
-              <div key={g.id} style={S.groupRow(g.id === group.id)} onClick={() => switchGroup(g.id)}>
-                <div style={{ width: 40, height: 40, borderRadius: 12, background: "#7C5CFC22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
+              <div key={g.id} className="sw-press sw-card-hover" style={S.groupRow(g.id === group.id)} onClick={() => switchGroup(g.id)}>
+                <div style={{ width: 40, height: 40, borderRadius: 12, background: "#8B7CFF22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
                   {getCurrency(g.currency).flag}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{g.name}</div>
-                  <div style={{ fontSize: 11, color: "#6B7280" }}>{g.members.length} members · {g.currency}</div>
+                  <div style={{ fontSize: 11, color: "#7B7E8E" }}>{g.members.length} members · {g.currency}</div>
                 </div>
-                {g.id === group.id && <span style={{ color: "#7C5CFC", fontSize: 18 }}>✓</span>}
+                {g.id === group.id && <span style={{ color: "#8B7CFF", fontSize: 18 }}>✓</span>}
               </div>
             ))}
             <button
-              style={{ width: "100%", padding: 14, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", borderRadius: 13, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", marginTop: 8, boxShadow: "0 4px 18px rgba(124,92,252,0.35)" }}
+              className="sw-press"
+              style={{ width: "100%", padding: 14, background: "linear-gradient(135deg,#8B7CFF,#6D5AE0)", border: "none", borderRadius: 13, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", marginTop: 8, boxShadow: "0 4px 18px rgba(139,124,255,0.35)" }}
               onClick={() => { setShowGroupSwitcher(false); setShowCreateGroupModal(true); }}
             >
               + Create New Family Group
             </button>
-            <button style={{ width: "100%", padding: 13, background: "transparent", border: "1.5px solid #252836", borderRadius: 13, color: "#6B7280", fontSize: 14, cursor: "pointer", marginTop: 10 }} onClick={() => setShowGroupSwitcher(false)}>
+            <button className="sw-press" style={{ width: "100%", padding: 13, background: "transparent", border: "1.5px solid #24262F", borderRadius: 13, color: "#7B7E8E", fontSize: 14, cursor: "pointer", marginTop: 10 }} onClick={() => setShowGroupSwitcher(false)}>
               Close
             </button>
           </div>
@@ -1449,8 +1531,21 @@ function App() {
         );
       })()}
 
+      {/* ── Floating Bottom Navigation ── */}
+      <nav style={S.navBar}>
+        {[["dashboard","🏠","Home"],["transactions","🧾","Expenses"],["members","👨‍👩‍👧","Family"],["analytics","📊","Insights"]].map(([id,icon,lbl]) => {
+          const active = activeTab === id;
+          return (
+            <button key={id} className="sw-press" style={S.navItem(active)} onClick={() => { setActiveTab(id); setShowProfileMenu(false); }}>
+              <span style={S.navIcon(active)}>{icon}</span>
+              <span style={S.navLabel(active)}>{lbl}</span>
+            </button>
+          );
+        })}
+      </nav>
+
       {/* Toast notification */}
-      {toast && <div style={S.toast}>✓ {toast}</div>}
+      {toast && <div className="sw-fadein" style={S.toast}>✓ {toast}</div>}
     </div>
   );
 }
@@ -1461,21 +1556,23 @@ function NoGroupScreen({ currentUser, onCreateGroup, onSignOut }) {
   const [showCreate, setShowCreate] = React.useState(false);
 
   const S = {
-    root: { minHeight: "100vh", background: "#0F1117", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "'Inter',system-ui,sans-serif" },
+    root: { minHeight: "100vh", background: "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "'Inter',system-ui,sans-serif" },
     icon: { fontSize: 56, marginBottom: 16 },
-    title: { fontSize: 20, fontWeight: 700, color: "#E8E9F0", marginBottom: 8, textAlign: "center" },
-    sub: { fontSize: 13, color: "#6B7280", marginBottom: 28, textAlign: "center", maxWidth: 300 },
-    btn: { width: "100%", maxWidth: 320, padding: 15, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", borderRadius: 14, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(124,92,252,0.35)" },
-    signOut: { marginTop: 16, color: "#6B7280", background: "none", border: "none", fontSize: 13, cursor: "pointer" },
+    title: { fontSize: 20, fontWeight: 800, color: "#F2F3F7", marginBottom: 8, textAlign: "center", fontFamily: "'Plus Jakarta Sans',sans-serif" },
+    sub: { fontSize: 13, color: "#7B7E8E", marginBottom: 28, textAlign: "center", maxWidth: 300 },
+    btn: { width: "100%", maxWidth: 320, padding: 15, background: "linear-gradient(135deg,#8B7CFF,#6D5AE0)", border: "none", borderRadius: 14, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 8px 24px rgba(139,124,255,0.4)" },
+    signOut: { marginTop: 16, color: "#7B7E8E", background: "none", border: "none", fontSize: 13, cursor: "pointer" },
   };
 
   return (
     <div style={S.root}>
-      <div style={S.icon}>👨‍👩‍👧‍👦</div>
-      <div style={S.title}>No family groups yet</div>
-      <div style={S.sub}>Hi {currentUser.name.split(" ")[0]}! Create your own family group to start tracking shared expenses.</div>
-      <button style={S.btn} onClick={() => setShowCreate(true)}>+ Create Family Group</button>
-      <button style={S.signOut} onClick={onSignOut}>Sign out</button>
+      <div className="sw-fadein" style={S.icon}>👨‍👩‍👧‍👦</div>
+      <div className="sw-fadein-delay1" style={S.title}>No family groups yet</div>
+      <div className="sw-fadein-delay1" style={S.sub}>Hi {currentUser.name.split(" ")[0]}! Create your own family group to start tracking shared expenses.</div>
+      <div className="sw-fadein-delay2" style={{ width: "100%", maxWidth: 320 }}>
+        <button className="sw-press" style={S.btn} onClick={() => setShowCreate(true)}>+ Create Family Group</button>
+      </div>
+      <button className="sw-press" style={S.signOut} onClick={onSignOut}>Sign out</button>
 
       {showCreate && (
         <CreateGroupModal onClose={() => setShowCreate(false)} onCreate={(name, currency, budget) => { onCreateGroup(name, currency, budget); setShowCreate(false); }} />
@@ -1494,14 +1591,14 @@ function CreateGroupModal({ onClose, onCreate }) {
 
   const S = {
     overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 250, backdropFilter: "blur(4px)", padding: 20 },
-    card: { background: "#1A1D27", borderRadius: 24, padding: 28, width: "100%", maxWidth: 400, border: "1px solid #252836" },
-    title: { fontSize: 18, fontWeight: 700, color: "#E8E9F0", marginBottom: 6 },
-    sub: { fontSize: 13, color: "#6B7280", marginBottom: 20 },
-    label: { fontSize: 11, color: "#6B7280", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, display: "block" },
-    input: { width: "100%", background: "#0F1117", border: "1.5px solid #252836", borderRadius: 12, padding: "12px 14px", color: "#E8E9F0", fontSize: 15, fontFamily: "inherit", outline: "none", boxSizing: "border-box", marginBottom: 16 },
-    saveBtn: { width: "100%", padding: 14, background: "linear-gradient(135deg,#7C5CFC,#5B3FD4)", border: "none", borderRadius: 13, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(124,92,252,0.35)" },
-    cancelBtn: { width: "100%", padding: 13, background: "transparent", border: "1.5px solid #252836", borderRadius: 13, color: "#6B7280", fontSize: 14, cursor: "pointer", marginTop: 10 },
-    error: { background: "#FF6B6B22", border: "1px solid #FF6B6B44", borderRadius: 10, padding: "10px 14px", color: "#FF6B6B", fontSize: 13, marginBottom: 16 },
+    card: { background: "linear-gradient(165deg, #181A26 0%, #14151E 100%)", borderRadius: 24, padding: 28, width: "100%", maxWidth: 400, border: "1px solid #24262F", boxShadow: "0 20px 60px rgba(0,0,0,0.4)" },
+    title: { fontSize: 18, fontWeight: 800, color: "#F2F3F7", marginBottom: 6, fontFamily: "'Plus Jakarta Sans',sans-serif" },
+    sub: { fontSize: 13, color: "#7B7E8E", marginBottom: 20 },
+    label: { fontSize: 11, color: "#7B7E8E", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, display: "block" },
+    input: { width: "100%", background: "#0A0B12", border: "1.5px solid #24262F", borderRadius: 12, padding: "12px 14px", color: "#F2F3F7", fontSize: 15, fontFamily: "inherit", outline: "none", boxSizing: "border-box", marginBottom: 16 },
+    saveBtn: { width: "100%", padding: 14, background: "linear-gradient(135deg,#8B7CFF,#6D5AE0)", border: "none", borderRadius: 13, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(139,124,255,0.35)" },
+    cancelBtn: { width: "100%", padding: 13, background: "transparent", border: "1.5px solid #24262F", borderRadius: 13, color: "#7B7E8E", fontSize: 14, cursor: "pointer", marginTop: 10 },
+    error: { background: "#FB718522", border: "1px solid #FB718544", borderRadius: 10, padding: "10px 14px", color: "#FB7185", fontSize: 13, marginBottom: 16 },
   };
 
   function create() {
@@ -1511,8 +1608,8 @@ function CreateGroupModal({ onClose, onCreate }) {
   }
 
   return (
-    <div style={S.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div style={S.card}>
+    <div className="sw-fadein" style={S.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="sw-sheet-anim" style={S.card}>
         <div style={S.title}>Create Family Group</div>
         <div style={S.sub}>Start a new group — you'll be the admin.</div>
         {error && <div style={S.error}>⚠️ {error}</div>}
@@ -1530,8 +1627,8 @@ function CreateGroupModal({ onClose, onCreate }) {
           ))}
         </select>
 
-        <button style={S.saveBtn} onClick={create}>Create Group</button>
-        <button style={S.cancelBtn} onClick={onClose}>Cancel</button>
+        <button className="sw-press" style={S.saveBtn} onClick={create}>Create Group</button>
+        <button className="sw-press" style={S.cancelBtn} onClick={onClose}>Cancel</button>
       </div>
     </div>
   );
@@ -1541,17 +1638,17 @@ function CreateGroupModal({ onClose, onCreate }) {
 
 function ConfirmDialog({ title, description, confirmLabel, onCancel, onConfirm }) {
   const S = {
-    overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 20 },
-    card: { background: "#1A1D27", borderRadius: 20, padding: 24, width: "100%", maxWidth: 340, border: "1px solid #252836" },
+    overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 20, backdropFilter: "blur(4px)" },
+    card: { background: "linear-gradient(165deg, #181A26 0%, #14151E 100%)", borderRadius: 22, padding: 24, width: "100%", maxWidth: 340, border: "1px solid #24262F", boxShadow: "0 20px 60px rgba(0,0,0,0.4)" },
   };
   return (
-    <div style={S.overlay}>
-      <div style={S.card}>
-        <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>{title}</div>
-        <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 20, lineHeight: 1.5 }}>{description}</div>
+    <div className="sw-fadein" style={S.overlay}>
+      <div className="sw-sheet-anim" style={S.card}>
+        <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 8, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{title}</div>
+        <div style={{ fontSize: 13, color: "#7B7E8E", marginBottom: 20, lineHeight: 1.5 }}>{description}</div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button style={{ flex: 1, padding: 13, background: "#1E2130", border: "1.5px solid #252836", borderRadius: 12, color: "#E8E9F0", fontWeight: 500, cursor: "pointer" }} onClick={onCancel}>Cancel</button>
-          <button style={{ flex: 1, padding: 13, background: "#FF6B6B22", border: "1.5px solid #FF6B6B", borderRadius: 12, color: "#FF6B6B", fontWeight: 700, cursor: "pointer" }} onClick={onConfirm}>{confirmLabel}</button>
+          <button className="sw-press" style={{ flex: 1, padding: 13, background: "#1D1E28", border: "1.5px solid #24262F", borderRadius: 12, color: "#F2F3F7", fontWeight: 600, cursor: "pointer" }} onClick={onCancel}>Cancel</button>
+          <button className="sw-press" style={{ flex: 1, padding: 13, background: "#FB718522", border: "1.5px solid #FB7185", borderRadius: 12, color: "#FB7185", fontWeight: 700, cursor: "pointer" }} onClick={onConfirm}>{confirmLabel}</button>
         </div>
       </div>
     </div>
