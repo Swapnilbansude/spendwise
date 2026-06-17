@@ -73,12 +73,12 @@
 </div>
 <div id="root"></div>
 
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
 
-<script type="text/babel" data-presets="react">
-const { useState, useMemo } = React;
+<script type="text/babel" data-presets="react" data-type="module">
+const { useState, useMemo, useEffect, useCallback, useRef, createContext, useContext } = React;
 
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -239,10 +239,10 @@ function RadialGauge({ spent, budget, currency }) {
 // ─── AUTH SCREENS ─────────────────────────────────────────────────────────────
 
 function AuthScreen({ users, onLogin, onRegister }) {
-  const [mode, setMode] = React.useState("login"); // login | register
-  const [form, setForm] = React.useState({ name: "", email: "", password: "", confirm: "", currency: "USD" });
-  const [error, setError] = React.useState("");
-  const [showPass, setShowPass] = React.useState(false);
+  const [mode, setMode] = useState("login"); // login | register
+  const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "", currency: "USD" });
+  const [error, setError] = useState("");
+  const [showPass, setShowPass] = useState(false);
 
   const S = {
     root: { minHeight: "100vh", background: "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px", fontFamily: "Inter,system-ui,sans-serif" },
@@ -346,10 +346,10 @@ function AuthScreen({ users, onLogin, onRegister }) {
 // ─── EXPENSE MODAL ─────────────────────────────────────────────────────────────
 
 function ExpenseModal({ onClose, onSave, initial, members, currentUserId, isAdmin, currency }) {
-  const [form, setForm] = React.useState(initial || {
+  const [form, setForm] = useState(initial || {
     title: "", amount: "", category: "food", date: TODAY, note: "", userId: currentUserId,
   });
-  const [error, setError] = React.useState("");
+  const [error, setError] = useState("");
   const cur = getCurrency(currency);
 
   function set(k, v) { setForm((p) => ({ ...p, [k]: v })); setError(""); }
@@ -437,8 +437,8 @@ function ExpenseModal({ onClose, onSave, initial, members, currentUserId, isAdmi
 // ─── INVITE MEMBER MODAL ──────────────────────────────────────────────────────
 
 function InviteModal({ onClose, onInvite, users, group }) {
-  const [form, setForm] = React.useState({ name: "", email: "", role: "member" });
-  const [error, setError] = React.useState("");
+  const [form, setForm] = useState({ name: "", email: "", role: "member" });
+  const [error, setError] = useState("");
 
   function invite() {
     if (!form.name.trim()) { setError("Enter a name."); return; }
@@ -492,16 +492,16 @@ function InviteModal({ onClose, onInvite, users, group }) {
 // ─── PROFILE MODAL ────────────────────────────────────────────────────────────
 
 function ProfileModal({ onClose, onSave, onDeleteAccount, currentUser, users }) {
-  const [name, setName] = React.useState(currentUser.name);
-  const [email, setEmail] = React.useState(currentUser.email);
-  const [color, setColor] = React.useState(currentUser.color);
-  const [currentPassword, setCurrentPassword] = React.useState("");
-  const [newPassword, setNewPassword] = React.useState("");
-  const [confirmPassword, setConfirmPassword] = React.useState("");
-  const [error, setError] = React.useState("");
-  const [success, setSuccess] = React.useState("");
-  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
-  const [showPass, setShowPass] = React.useState(false);
+  const [name, setName] = useState(currentUser.name);
+  const [email, setEmail] = useState(currentUser.email);
+  const [color, setColor] = useState(currentUser.color);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showPass, setShowPass] = useState(false);
 
   const S = {
     overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100, backdropFilter: "blur(4px)" },
@@ -619,10 +619,10 @@ function ProfileModal({ onClose, onSave, onDeleteAccount, currentUser, users }) 
 
 
 function GroupSettingsModal({ onClose, onSave, onDeleteGroup, group, memberCount }) {
-  const [name, setName] = React.useState(group.name);
-  const [budget, setBudget] = React.useState(String(group.budget));
-  const [currency, setCurrency] = React.useState(group.currency);
-  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  const [name, setName] = useState(group.name);
+  const [budget, setBudget] = useState(String(group.budget));
+  const [currency, setCurrency] = useState(group.currency);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const S = {
     overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, backdropFilter: "blur(4px)", padding: 20 },
@@ -708,57 +708,58 @@ function savePersisted(data) {
 }
 
 function App() {
-  const persisted = React.useMemo(() => loadPersisted(), []);
-  const [users,    setUsers]    = React.useState(persisted?.users    || SEED_USERS);
-  const [groups,   setGroups]   = React.useState(persisted?.groups   || SEED_GROUPS);
-  const [expenses, setExpenses] = React.useState(persisted?.expenses || SEED_EXPENSES);
-  const [currentUser, setCurrentUser] = React.useState(null);
-  const [activeGroupId, setActiveGroupId] = React.useState((persisted?.groups || SEED_GROUPS)[0]?.id || null);
-  const [activeTab,   setActiveTab]   = React.useState("dashboard");
-  const [showExpModal,  setShowExpModal]  = React.useState(false);
-  const [showInvModal,  setShowInvModal]  = React.useState(false);
-  const [showSettingsModal, setShowSettingsModal] = React.useState(false);
-  const [showProfileModal, setShowProfileModal] = React.useState(false);
-  const [showCreateGroupModal, setShowCreateGroupModal] = React.useState(false);
-  const [showGroupSwitcher, setShowGroupSwitcher] = React.useState(false);
-  const [editExpense,   setEditExpense]   = React.useState(null);
-  const [deleteId,      setDeleteId]      = React.useState(null);
-  const [removeMemberId, setRemoveMemberId] = React.useState(null);
-  const [showResetConfirm, setShowResetConfirm] = React.useState(false);
-  const [filter,        setFilter]        = React.useState("all");
-  const [memberFilter,  setMemberFilter]  = React.useState("all");
-  const [search,        setSearch]        = React.useState("");
-  const [showProfileMenu, setShowProfileMenu] = React.useState(false);
-  const [toasts, setToasts] = React.useState([]); // [{id, message, type, leaving}]
+  const persisted = useMemo(() => loadPersisted(), []);
+  const [users,    setUsers]    = useState(persisted?.users    || SEED_USERS);
+  const [groups,   setGroups]   = useState(persisted?.groups   || SEED_GROUPS);
+  const [expenses, setExpenses] = useState(persisted?.expenses || SEED_EXPENSES);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [activeGroupId, setActiveGroupId] = useState((persisted?.groups || SEED_GROUPS)[0]?.id || null);
+  const [activeTab,   setActiveTab]   = useState("dashboard");
+  const [showExpModal,  setShowExpModal]  = useState(false);
+  const [showInvModal,  setShowInvModal]  = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [showGroupSwitcher, setShowGroupSwitcher] = useState(false);
+  const [editExpense,   setEditExpense]   = useState(null);
+  const [deleteId,      setDeleteId]      = useState(null);
+  const [removeMemberId, setRemoveMemberId] = useState(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [filter,        setFilter]        = useState("all");
+  const [memberFilter,  setMemberFilter]  = useState("all");
+  const [search,        setSearch]        = useState("");
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [toasts, setToasts] = useState([]); // [{id, message, type, leaving}]
 
   // Groups the current user belongs to
-  const myGroups = React.useMemo(
+  const myGroups = useMemo(
     () => groups.filter((g) => currentUser && g.members.some((m) => m.userId === currentUser.id)),
     [groups, currentUser]
   );
 
   // Persist state changes to localStorage
-  React.useEffect(() => {
+  useEffect(() => {
     savePersisted({ users, groups, expenses });
   }, [users, groups, expenses]);
 
   // Ensure activeGroupId is valid for current user
-  React.useEffect(() => {
+  useEffect(() => {
     if (!currentUser) return;
     if (!myGroups.find((g) => g.id === activeGroupId)) {
       setActiveGroupId(myGroups[0]?.id || null);
     }
   }, [currentUser, myGroups, activeGroupId]);
 
-  const group = React.useMemo(() => groups.find((g) => g.id === activeGroupId) || null, [groups, activeGroupId]);
+  const group = useMemo(() => groups.find((g) => g.id === activeGroupId) || null, [groups, activeGroupId]);
 
-  const isAdmin = React.useMemo(() => {
+  const isAdmin = useMemo(() => {
     if (!group || !currentUser) return false;
     const m = group.members.find((m) => m.userId === currentUser.id);
     return m?.role === "admin";
   }, [group, currentUser]);
 
-  const members = React.useMemo(() => {
+  const members = useMemo(() => {
     if (!group) return [];
     return group.members
       .map((gm) => {
@@ -768,12 +769,12 @@ function App() {
       .filter(Boolean);
   }, [group, users]);
 
-  const groupExpenses = React.useMemo(
+  const groupExpenses = useMemo(
     () => (group ? expenses.filter((e) => e.groupId === group.id) : []),
     [expenses, group]
   );
 
-  const filtered = React.useMemo(() => {
+  const filtered = useMemo(() => {
     let list = groupExpenses;
     if (filter !== "all") list = list.filter((e) => e.category === filter);
     if (memberFilter !== "all") list = list.filter((e) => e.userId === memberFilter);
@@ -781,16 +782,16 @@ function App() {
     return [...list].sort((a, b) => (a.date < b.date ? 1 : -1));
   }, [groupExpenses, filter, memberFilter, search]);
 
-  const totalSpent = React.useMemo(() => groupExpenses.reduce((s, e) => s + e.amount, 0), [groupExpenses]);
+  const totalSpent = useMemo(() => groupExpenses.reduce((s, e) => s + e.amount, 0), [groupExpenses]);
   const remaining  = (group?.budget || 0) - totalSpent;
 
-  const byMember = React.useMemo(() => members.map((m) => ({
+  const byMember = useMemo(() => members.map((m) => ({
     ...m,
     total: groupExpenses.filter((e) => e.userId === m.id).reduce((s, e) => s + e.amount, 0),
     count: groupExpenses.filter((e) => e.userId === m.id).length,
   })).sort((a, b) => b.total - a.total), [members, groupExpenses]);
 
-  const byCategory = React.useMemo(() => {
+  const byCategory = useMemo(() => {
     const map = {};
     groupExpenses.forEach((e) => { map[e.category] = (map[e.category] || 0) + e.amount; });
     return CATEGORIES.map((c) => ({ ...c, total: map[c.id] || 0 })).filter((c) => c.total > 0).sort((a, b) => b.total - a.total);
@@ -1069,6 +1070,9 @@ function App() {
                 <button style={S.menuItem(false)} onClick={() => { setShowGroupSwitcher(true); setShowProfileMenu(false); }}>
                   🔄 Switch / Add Group
                 </button>
+                <button style={S.menuItem(false)} onClick={() => { setShowExportModal(true); setShowProfileMenu(false); }}>
+                  📤 Export Data
+                </button>
                 <button style={S.menuItem(true)} onClick={() => { setCurrentUser(null); setShowProfileMenu(false); }}>
                   🚪 Sign Out
                 </button>
@@ -1195,6 +1199,7 @@ function App() {
               <span style={{ fontSize: 14, color: "#7B7E8E" }}>🔍</span>
               <input style={S.searchInput} placeholder="Search expenses…" value={search} onChange={(e) => setSearch(e.target.value)} />
               {search && <button onClick={() => setSearch("")} style={{ background: "none", border: "none", color: "#7B7E8E", cursor: "pointer" }}>✕</button>}
+              <button className="sw-press" onClick={() => exportToCSV(filtered.length > 0 ? filtered : groupExpenses, users, groups, group.currency)} style={{ background: "none", border: "none", color: "#8B7CFF", cursor: "pointer", fontSize: 17, padding: "0 4px" }} title="Export CSV">📤</button>
             </div>
 
             <div style={S.filterRow}>
@@ -1369,6 +1374,18 @@ function App() {
         {/* ══════════════ ANALYTICS ══════════════ */}
         {activeTab === "analytics" && (
           <div className="sw-fadein" key="analytics">
+
+            {/* Export bar */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+              <button className="sw-press" onClick={() => setShowExportModal(true)} style={{ flex: 1, padding: "11px 0", background: "linear-gradient(135deg,#8B7CFF,#6D5AE0)", border: "none", borderRadius: 12, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                📤 Export Data
+              </button>
+              <button className="sw-press" onClick={() => exportToCSV(groupExpenses, users, groups, group.currency)} style={{ flex: 1, padding: "11px 0", background: "#8B7CFF18", border: "1.5px solid #8B7CFF44", borderRadius: 12, color: "#8B7CFF", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                ⬇️ Quick CSV
+              </button>
+            </div>
+
+            {/* Summary stats */}
             <div style={S.statsRow}>
               <div style={S.statCard("#8B7CFF")}>
                 <div style={S.statLabel}>Total Spent</div>
@@ -1380,7 +1397,44 @@ function App() {
               </div>
             </div>
 
-            <div className="sw-card-hover" style={S.card}>
+            {/* 30-Day Spending Trend */}
+            <div style={S.card}>
+              <div style={S.sectionTitle}>30-Day Spending Trend</div>
+              {groupExpenses.length === 0 ? (
+                <div style={{ color: "#7B7E8E", fontSize: 13, textAlign: "center", padding: "16px 0" }}>No data yet</div>
+              ) : (
+                <SpendingTrendChart expenses={groupExpenses} currency={group.currency} />
+              )}
+            </div>
+
+            {/* Category Donut */}
+            <div style={S.card}>
+              <div style={S.sectionTitle}>Spending by Category</div>
+              {byCategory.length === 0 ? (
+                <div style={{ color: "#7B7E8E", fontSize: 13, textAlign: "center", padding: "16px 0" }}>No data yet</div>
+              ) : (
+                <CategoryDonutChart byCategory={byCategory} totalSpent={totalSpent} currency={group.currency} />
+              )}
+            </div>
+
+            {/* Daily Spending Pattern */}
+            <div style={S.card}>
+              <div style={S.sectionTitle}>Spending by Day of Week</div>
+              {groupExpenses.length === 0 ? (
+                <div style={{ color: "#7B7E8E", fontSize: 13, textAlign: "center", padding: "16px 0" }}>No data yet</div>
+              ) : (
+                <DailySpendingChart expenses={groupExpenses} currency={group.currency} />
+              )}
+            </div>
+
+            {/* Monthly Comparison */}
+            <div style={S.card}>
+              <div style={S.sectionTitle}>Monthly Comparison</div>
+              <MonthlyComparisonChart expenses={groupExpenses} currency={group.currency} />
+            </div>
+
+            {/* Member spending bars */}
+            <div style={S.card}>
               <div style={S.sectionTitle}>Spending by Member</div>
               {byMember.length === 0 ? (
                 <div style={{ color: "#7B7E8E", fontSize: 13, textAlign: "center", padding: "16px 0" }}>No data yet</div>
@@ -1403,8 +1457,9 @@ function App() {
               ))}
             </div>
 
-            <div className="sw-card-hover" style={S.card}>
-              <div style={S.sectionTitle}>Spending by Category</div>
+            {/* Category breakdown list */}
+            <div style={S.card}>
+              <div style={S.sectionTitle}>Category Breakdown</div>
               {byCategory.length === 0 ? (
                 <div style={{ color: "#7B7E8E", fontSize: 13, textAlign: "center", padding: "16px 0" }}>No data yet</div>
               ) : byCategory.map((c) => (
@@ -1426,7 +1481,8 @@ function App() {
               ))}
             </div>
 
-            <div className="sw-card-hover" style={S.card}>
+            {/* Fair Share Analysis */}
+            <div style={S.card}>
               <div style={S.sectionTitle}>Fair Share Analysis</div>
               {members.length === 0 ? (
                 <div style={{ color: "#7B7E8E", fontSize: 13, textAlign: "center", padding: "16px 0" }}>No members yet</div>
@@ -1573,6 +1629,17 @@ function App() {
         />
       )}
 
+      {showExportModal && (
+        <ExportModal
+          onClose={() => setShowExportModal(false)}
+          onExportCSV={() => { exportToCSV(groupExpenses, users, groups, group.currency); setShowExportModal(false); showToast("CSV exported!", "success"); }}
+          onExportJSON={() => { exportToJSON(groupExpenses, users, groups); setShowExportModal(false); showToast("JSON exported!", "success"); }}
+          onExportAllCSV={() => { exportToCSV(expenses, users, groups, group.currency); setShowExportModal(false); showToast("All data exported!", "success"); }}
+          groupName={group.name}
+          count={groupExpenses.length}
+        />
+      )}
+
       {/* ── Floating Bottom Navigation ── */}
       <nav style={S.navBar}>
         {[["dashboard","🏠","Home"],["transactions","🧾","Expenses"],["members","👨‍👩‍👧","Family"],["analytics","📊","Insights"]].map(([id,icon,lbl]) => {
@@ -1605,7 +1672,7 @@ function App() {
 // ─── NO GROUP / EMPTY STATE SCREEN ──────────────────────────────────────────────
 
 function NoGroupScreen({ currentUser, onCreateGroup, onSignOut }) {
-  const [showCreate, setShowCreate] = React.useState(false);
+  const [showCreate, setShowCreate] = useState(false);
 
   const S = {
     root: { minHeight: "100vh", background: "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "'Inter',system-ui,sans-serif" },
@@ -1636,10 +1703,10 @@ function NoGroupScreen({ currentUser, onCreateGroup, onSignOut }) {
 // ─── CREATE GROUP MODAL ──────────────────────────────────────────────────────────
 
 function CreateGroupModal({ onClose, onCreate }) {
-  const [name, setName] = React.useState("");
-  const [currency, setCurrency] = React.useState("USD");
-  const [budget, setBudget] = React.useState("2000");
-  const [error, setError] = React.useState("");
+  const [name, setName] = useState("");
+  const [currency, setCurrency] = useState("USD");
+  const [budget, setBudget] = useState("2000");
+  const [error, setError] = useState("");
 
   const S = {
     overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 250, backdropFilter: "blur(4px)", padding: 20 },
@@ -1680,6 +1747,269 @@ function CreateGroupModal({ onClose, onCreate }) {
         </select>
 
         <button className="sw-press" style={S.saveBtn} onClick={create}>Create Group</button>
+        <button className="sw-press" style={S.cancelBtn} onClick={onClose}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── EXPORT UTILITIES ─────────────────────────────────────────────────────────
+
+function exportToCSV(expenses, users, groups, currency) {
+  const getCurrencySymbol = (code) => CURRENCIES.find(c => c.code === code)?.symbol || '$';
+  const rows = [
+    ["Date", "Title", "Category", "Amount", "Currency", "Paid By", "Group", "Note"]
+  ];
+  [...expenses].sort((a, b) => a.date < b.date ? 1 : -1).forEach((e) => {
+    const user = users.find((u) => u.id === e.userId);
+    const grp = groups.find((g) => g.id === e.groupId);
+    const cat = getCat(e.category);
+    rows.push([
+      e.date,
+      `"${e.title.replace(/"/g, '""')}"`,
+      cat.label,
+      e.amount.toFixed(2),
+      grp?.currency || currency,
+      user?.name || "Unknown",
+      `"${grp?.name || ""}"`,
+      `"${(e.note || "").replace(/"/g, '""')}"`
+    ]);
+  });
+  const csv = rows.map(r => r.join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `spendwise-expenses-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportToJSON(expenses, users, groups) {
+  const data = {
+    exported: new Date().toISOString(),
+    expenses: expenses.map((e) => ({
+      ...e,
+      userName: users.find((u) => u.id === e.userId)?.name,
+      groupName: groups.find((g) => g.id === e.groupId)?.name,
+      categoryLabel: getCat(e.category).label,
+    })),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `spendwise-export-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── CHART COMPONENTS ─────────────────────────────────────────────────────────
+
+function SpendingTrendChart({ expenses, currency }) {
+  // Build last 30 days daily totals
+  const days = useMemo(() => {
+    const map = {};
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      map[d] = 0;
+    }
+    expenses.forEach((e) => { if (map[e.date] !== undefined) map[e.date] += e.amount; });
+    return Object.entries(map).map(([date, total]) => ({ date, total }));
+  }, [expenses]);
+
+  const maxVal = Math.max(...days.map(d => d.total), 1);
+  const W = 320, H = 100, PAD = 8;
+  const pts = days.map((d, i) => {
+    const x = PAD + (i / (days.length - 1)) * (W - PAD * 2);
+    const y = H - PAD - (d.total / maxVal) * (H - PAD * 2);
+    return { x, y, ...d };
+  });
+  const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const areaD = `${pathD} L${pts[pts.length-1].x.toFixed(1)},${H} L${pts[0].x.toFixed(1)},${H} Z`;
+
+  return (
+    <div>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ overflow: 'visible' }}>
+        <defs>
+          <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#8B7CFF" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#8B7CFF" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        {/* Grid lines */}
+        {[0.25, 0.5, 0.75, 1].map((f) => (
+          <line key={f} x1={PAD} y1={H - PAD - f*(H-PAD*2)} x2={W-PAD} y2={H - PAD - f*(H-PAD*2)}
+            stroke="#24262F" strokeWidth="1" />
+        ))}
+        <path d={areaD} fill="url(#trendGrad)" />
+        <path d={pathD} fill="none" stroke="#8B7CFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        {pts.filter((_, i) => i % 5 === 0 || i === pts.length - 1).map((p) => (
+          <circle key={p.date} cx={p.x} cy={p.y} r="3" fill="#8B7CFF" stroke="#0A0B12" strokeWidth="1.5" />
+        ))}
+      </svg>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#7B7E8E', marginTop: 4 }}>
+        <span>{days[0]?.date.slice(5)}</span>
+        <span>{days[14]?.date.slice(5)}</span>
+        <span>{days[29]?.date.slice(5)}</span>
+      </div>
+    </div>
+  );
+}
+
+function CategoryDonutChart({ byCategory, totalSpent, currency }) {
+  const W = 160, R = 58, cx = 80, cy = 80;
+  const circumference = 2 * Math.PI * R;
+  let offset = 0;
+  const arcs = byCategory.slice(0, 6).map((c) => {
+    const frac = c.total / totalSpent;
+    const arc = { ...c, frac, offset, dashLen: frac * circumference };
+    offset += frac * circumference;
+    return arc;
+  });
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <svg width={W} height={W} viewBox={`0 0 ${W} ${W}`} style={{ flexShrink: 0 }}>
+        {/* Background ring */}
+        <circle cx={cx} cy={cy} r={R} fill="none" stroke="#1D1E28" strokeWidth="22" />
+        {arcs.map((arc) => (
+          <circle key={arc.id} cx={cx} cy={cy} r={R} fill="none"
+            stroke={arc.color} strokeWidth="22" strokeLinecap="butt"
+            strokeDasharray={`${arc.dashLen} ${circumference}`}
+            strokeDashoffset={-arc.offset}
+            transform={`rotate(-90 ${cx} ${cy})`} />
+        ))}
+        <text x={cx} y={cy - 6} textAnchor="middle" fill="#F2F3F7" fontSize="13" fontWeight="800">
+          {money(totalSpent, currency)}
+        </text>
+        <text x={cx} y={cy + 10} textAnchor="middle" fill="#7B7E8E" fontSize="9">total</text>
+      </svg>
+      <div style={{ flex: 1 }}>
+        {arcs.map((arc) => (
+          <div key={arc.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 7 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: arc.color, flexShrink: 0 }} />
+            <div style={{ flex: 1, fontSize: 11, color: '#F2F3F7', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{arc.label}</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: arc.color }}>{Math.round(arc.frac * 100)}%</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DailySpendingChart({ expenses, currency }) {
+  const byDay = useMemo(() => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const totals = [0,0,0,0,0,0,0];
+    expenses.forEach((e) => { totals[new Date(e.date + 'T00:00:00').getDay()] += e.amount; });
+    return days.map((d, i) => ({ day: d, total: totals[i] }));
+  }, [expenses]);
+
+  const maxVal = Math.max(...byDay.map(d => d.total), 1);
+  const today = new Date().getDay();
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 80 }}>
+      {byDay.map((d, i) => {
+        const h = Math.max((d.total / maxVal) * 64, d.total > 0 ? 4 : 2);
+        const isToday = i === today;
+        return (
+          <div key={d.day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <div style={{ fontSize: 9, color: isToday ? '#8B7CFF' : '#7B7E8E', fontWeight: isToday ? 700 : 400 }}>
+              {money(d.total, currency).replace(/\.00$/, '')}
+            </div>
+            <div style={{
+              width: '100%', height: h, borderRadius: 4,
+              background: isToday ? 'linear-gradient(180deg, #8B7CFF, #6D5AE0)' : d.total > 0 ? '#8B7CFF44' : '#24262F',
+              transition: 'height 0.5s'
+            }} />
+            <div style={{ fontSize: 9, color: isToday ? '#8B7CFF' : '#7B7E8E', fontWeight: isToday ? 700 : 400 }}>{d.day}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MonthlyComparisonChart({ expenses, currency }) {
+  const months = useMemo(() => {
+    const map = {};
+    expenses.forEach((e) => {
+      const m = e.date.slice(0, 7);
+      map[m] = (map[m] || 0) + e.amount;
+    });
+    const sorted = Object.entries(map).sort((a, b) => a[0] < b[0] ? -1 : 1).slice(-6);
+    return sorted.map(([month, total]) => ({
+      label: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+      total
+    }));
+  }, [expenses]);
+
+  if (months.length === 0) return <div style={{ color: '#7B7E8E', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>No monthly data yet</div>;
+
+  const maxVal = Math.max(...months.map(m => m.total), 1);
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 100 }}>
+      {months.map((m, i) => {
+        const h = Math.max((m.total / maxVal) * 80, m.total > 0 ? 6 : 2);
+        const isLatest = i === months.length - 1;
+        return (
+          <div key={m.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <div style={{ fontSize: 8, color: isLatest ? '#34D399' : '#7B7E8E', fontWeight: 700, textAlign: 'center' }}>
+              {money(m.total, currency).replace(/\.\d\d$/, '')}
+            </div>
+            <div style={{
+              width: '100%', height: h, borderRadius: '4px 4px 0 0',
+              background: isLatest ? 'linear-gradient(180deg, #34D399, #059669)' : 'linear-gradient(180deg, #8B7CFF66, #6D5AE044)',
+              transition: 'height 0.5s'
+            }} />
+            <div style={{ fontSize: 9, color: isLatest ? '#34D399' : '#7B7E8E', fontWeight: isLatest ? 700 : 400, textAlign: 'center' }}>{m.label}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── EXPORT MODAL ─────────────────────────────────────────────────────────────
+
+function ExportModal({ onClose, onExportCSV, onExportJSON, onExportAllCSV, groupName, count }) {
+  const S = {
+    overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100, backdropFilter: "blur(4px)" },
+    sheet: { background: "linear-gradient(165deg, #181A26 0%, #14151E 100%)", borderRadius: "24px 24px 0 0", padding: "24px 20px 40px", width: "100%", maxWidth: 480, border: "1px solid #24262F", borderBottom: "none" },
+    handle: { width: 40, height: 4, background: "#24262F", borderRadius: 4, margin: "0 auto 20px" },
+    title: { fontSize: 18, fontWeight: 800, color: "#F2F3F7", marginBottom: 4, fontFamily: "'Plus Jakarta Sans',sans-serif" },
+    sub: { fontSize: 13, color: "#7B7E8E", marginBottom: 20 },
+    optionBtn: { width: "100%", padding: "14px 18px", background: "#1D1E28", border: "1.5px solid #24262F", borderRadius: 14, marginBottom: 10, cursor: "pointer", display: "flex", alignItems: "center", gap: 14, textAlign: "left" },
+    optionIcon: { fontSize: 24, flexShrink: 0 },
+    optionLabel: { fontSize: 14, fontWeight: 700, color: "#F2F3F7", marginBottom: 2 },
+    optionDesc: { fontSize: 11, color: "#7B7E8E" },
+    cancelBtn: { width: "100%", padding: 13, background: "transparent", border: "1.5px solid #24262F", borderRadius: 13, color: "#7B7E8E", fontSize: 14, cursor: "pointer", marginTop: 4 },
+  };
+
+  const options = [
+    { icon: "📊", label: "Export as CSV", desc: `${count} expenses from ${groupName} — opens in Excel/Sheets`, action: onExportCSV },
+    { icon: "🗂️", label: "Export as JSON", desc: "Full data with categories and member names", action: onExportJSON },
+    { icon: "💾", label: "Export All Groups CSV", desc: "All expenses across every group you belong to", action: onExportAllCSV },
+  ];
+
+  return (
+    <div className="sw-fadein" style={S.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="sw-sheet-anim" style={S.sheet}>
+        <div style={S.handle} />
+        <div style={S.title}>Export Data</div>
+        <div style={S.sub}>Download your expense data in your preferred format.</div>
+        {options.map((o) => (
+          <button key={o.label} className="sw-press sw-card-hover" style={S.optionBtn} onClick={o.action}>
+            <div style={S.optionIcon}>{o.icon}</div>
+            <div>
+              <div style={S.optionLabel}>{o.label}</div>
+              <div style={S.optionDesc}>{o.desc}</div>
+            </div>
+          </button>
+        ))}
         <button className="sw-press" style={S.cancelBtn} onClick={onClose}>Cancel</button>
       </div>
     </div>
