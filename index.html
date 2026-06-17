@@ -50,6 +50,10 @@
   @keyframes swPulseGlow { 0%,100% { opacity: 0.55; transform: scale(1); } 50% { opacity: 0.85; transform: scale(1.04); } }
   .sw-sheet-anim { animation: swSlideUp 0.32s cubic-bezier(.16,1,.3,1) both; }
   .sw-glow { animation: swPulseGlow 4s ease-in-out infinite; }
+  @keyframes swToastIn { from { opacity: 0; transform: translateY(16px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes swToastOut { from { opacity: 1; transform: translateY(0) scale(1); max-height: 60px; margin-top: 0; } to { opacity: 0; transform: translateY(6px) scale(0.97); max-height: 0; margin-top: -8px; } }
+  .sw-toast-in { animation: swToastIn 0.32s cubic-bezier(.34,1.56,.64,1) both; }
+  .sw-toast-out { animation: swToastOut 0.22s ease both; overflow: hidden; }
 
   /* Loading splash */
   #splash {
@@ -106,6 +110,14 @@ const CURRENCIES = [
 ];
 const getCurrency = (code) => CURRENCIES.find((c) => c.code === code) || CURRENCIES[0];
 const ZERO_DECIMAL = ["JPY"];
+
+const TOAST_CONFIG = {
+  success: { icon: "✓",  color: "#34D399", bg: "#34D39918" },
+  error:   { icon: "✕",  color: "#FB7185", bg: "#FB718518" },
+  warning: { icon: "⚠️", color: "#FBBF24", bg: "#FBBF2418" },
+  info:    { icon: "ℹ",  color: "#8B7CFF", bg: "#8B7CFF18" },
+};
+const TOAST_DURATION = { success: 2800, info: 2800, warning: 3800, error: 4200 };
 
 // ─── Seed data (empty — first user to register creates their own group) ───────
 
@@ -712,11 +724,12 @@ function App() {
   const [editExpense,   setEditExpense]   = React.useState(null);
   const [deleteId,      setDeleteId]      = React.useState(null);
   const [removeMemberId, setRemoveMemberId] = React.useState(null);
+  const [showResetConfirm, setShowResetConfirm] = React.useState(false);
   const [filter,        setFilter]        = React.useState("all");
   const [memberFilter,  setMemberFilter]  = React.useState("all");
   const [search,        setSearch]        = React.useState("");
   const [showProfileMenu, setShowProfileMenu] = React.useState(false);
-  const [toast, setToast] = React.useState(null);
+  const [toasts, setToasts] = React.useState([]); // [{id, message, type, leaving}]
 
   // Groups the current user belongs to
   const myGroups = React.useMemo(
@@ -783,9 +796,21 @@ function App() {
     return CATEGORIES.map((c) => ({ ...c, total: map[c.id] || 0 })).filter((c) => c.total > 0).sort((a, b) => b.total - a.total);
   }, [groupExpenses]);
 
-  function showToast(msg) { setToast(msg); setTimeout(() => setToast(null), 2800); }
+  function showToast(message, type = "success") {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => [...prev, { id, message, type, leaving: false }]);
+    const duration = TOAST_DURATION[type] || 2800;
+    setTimeout(() => {
+      // Trigger exit animation, then remove after it finishes
+      setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, leaving: true } : t)));
+      setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 220);
+    }, duration);
+  }
 
-  function handleLogin(u) { setCurrentUser(u); }
+  function handleLogin(u) {
+    setCurrentUser(u);
+    showToast(`Welcome back, ${u.name.split(" ")[0]}! 👋`, "success");
+  }
 
   function handleRegister(u, currency) {
     const newGroupId = "g" + Date.now();
@@ -799,6 +824,7 @@ function App() {
     }]);
     setCurrentUser(u);
     setActiveGroupId(newGroupId);
+    showToast(`Welcome to Spendwise, ${u.name.split(" ")[0]}! 🎉`, "success");
   }
 
   function handleInvite(u, role) {
@@ -807,12 +833,12 @@ function App() {
       ? { ...g, members: [...g.members, { userId: u.id, role: role || "member" }] }
       : g
     ));
-    showToast(`${u.name} added to ${group.name}!`);
+    showToast(`${u.name} added to ${group.name}!`, "success");
   }
 
   function updateProfile(updates) {    setUsers((prev) => prev.map((u) => u.id === currentUser.id ? { ...u, ...updates } : u));
     setCurrentUser((prev) => ({ ...prev, ...updates }));
-    showToast("Profile updated.");
+    showToast("Profile updated.", "success");
   }
 
   function deleteAccount() {
@@ -833,10 +859,10 @@ function App() {
   function saveExpense(data) {
     if (data.id) {
       setExpenses((p) => p.map((e) => (e.id === data.id ? { ...e, ...data } : e)));
-      showToast("Expense updated.");
+      showToast("Expense updated.", "success");
     } else {
       setExpenses((p) => [{ id: Date.now(), groupId: group.id, ...data }, ...p]);
-      showToast("Expense added.");
+      showToast("Expense added.", "success");
     }
     setShowExpModal(false);
     setEditExpense(null);
@@ -845,7 +871,7 @@ function App() {
   function deleteExpense(id) {
     setExpenses((p) => p.filter((e) => e.id !== id));
     setDeleteId(null);
-    showToast("Expense deleted.");
+    showToast("Expense deleted.", "warning");
   }
 
   function openAdd() { setEditExpense(null); setShowExpModal(true); }
@@ -862,7 +888,7 @@ function App() {
     }]);
     setActiveGroupId(newGroupId);
     setActiveTab("dashboard");
-    showToast(`"${name}" group created!`);
+    showToast(`"${name}" group created!`, "success");
   }
 
   function deleteGroup() {
@@ -871,14 +897,16 @@ function App() {
     setExpenses((prev) => prev.filter((e) => e.groupId !== gid));
     setShowSettingsModal(false);
     setActiveGroupId(null);
-    showToast("Group deleted.");
+    showToast("Group deleted.", "warning");
   }
 
   function switchGroup(id) {
+    const target = groups.find((g) => g.id === id);
     setActiveGroupId(id);
     setShowGroupSwitcher(false);
     setShowProfileMenu(false);
     setActiveTab("dashboard");
+    if (target) showToast(`Switched to "${target.name}"`, "info");
   }
 
   // Change a member's role within the active group (promote/demote)
@@ -887,7 +915,9 @@ function App() {
       if (g.id !== group.id) return g;
       return { ...g, members: g.members.map((m) => m.userId === userId ? { ...m, role } : m) };
     }));
-    showToast("Role updated.");
+    const u = users.find((u) => u.id === userId);
+    const name = u?.name.split(" ")[0] || "Member";
+    showToast(role === "admin" ? `${name} is now an admin 👑` : `${name} is now a member`, "success");
   }
 
   // Remove a member from the active group (admin only, cannot remove self if last admin)
@@ -895,7 +925,7 @@ function App() {
     const target = group.members.find((m) => m.userId === userId);
     const adminCount = group.members.filter((m) => m.role === "admin").length;
     if (target?.role === "admin" && adminCount <= 1) {
-      showToast("Can't remove the only admin.");
+      showToast("Can't remove the only admin. Promote someone else first.", "error");
       setRemoveMemberId(null);
       return;
     }
@@ -907,10 +937,11 @@ function App() {
     setExpenses((prev) => prev.filter((e) => !(e.groupId === group.id && e.userId === userId)));
     setRemoveMemberId(null);
     const u = users.find((u) => u.id === userId);
-    showToast(`${u?.name || "Member"} removed from group.`);
     if (userId === currentUser.id) {
-      // user removed themselves
+      showToast(`You left "${group.name}".`, "info");
       setActiveGroupId(null);
+    } else {
+      showToast(`${u?.name || "Member"} removed from group.`, "warning");
     }
   }
 
@@ -978,11 +1009,14 @@ function App() {
     barFill:   (c, p) => ({ height: "100%", width: `${p * 100}%`, background: `linear-gradient(90deg, ${c}CC, ${c})`, borderRadius: 4, transition: "width 0.6s" }),
     profileMenu: { position: "absolute", top: 50, right: 0, background: "#1B1D29", border: "1px solid #24262F", borderRadius: 16, padding: 8, minWidth: 210, zIndex: 50, boxShadow: "0 8px 32px rgba(0,0,0,0.45)" },
     menuItem: (danger) => ({ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, cursor: "pointer", background: "none", border: "none", width: "100%", textAlign: "left", color: danger ? "#FB7185" : "#F2F3F7", fontSize: 13, fontFamily: "inherit" }),
-    toast: { position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "#1B1D29", border: "1px solid #24262F", borderRadius: 12, padding: "10px 18px", fontSize: 13, color: "#F2F3F7", zIndex: 300, boxShadow: "0 4px 20px rgba(0,0,0,0.4)", whiteSpace: "nowrap" },
+    toastContainer: { position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", width: "calc(100% - 40px)", maxWidth: 440, display: "flex", flexDirection: "column-reverse", gap: 8, zIndex: 300, alignItems: "stretch", pointerEvents: "none" },
+    toast: (color, bg) => ({ display: "flex", alignItems: "center", gap: 10, background: "#1B1D29", border: `1px solid ${color}40`, borderRadius: 14, padding: "12px 14px", fontSize: 13, color: "#F2F3F7", boxShadow: "0 8px 28px rgba(0,0,0,0.45)", pointerEvents: "auto" }),
+    toastIcon: (color, bg) => ({ width: 24, height: 24, borderRadius: "50%", background: bg, color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, flexShrink: 0 }),
+    toastMsg: { flex: 1, fontWeight: 500, lineHeight: 1.4 },
     empty: { textAlign: "center", padding: "40px 20px", color: "#7B7E8E" },
     // Group switcher
     switcherOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 150, backdropFilter: "blur(4px)" },
-    switcherSheet: { background: "#15161F", borderRadius: "24px 24px 0 0", padding: "24px 20px 36px", width: "100%", maxWidth: 480, border: "1px solid #24262F", borderBottom: "none" },
+    switcherSheet: { background: "linear-gradient(165deg, #181A26 0%, #14151E 100%)", borderRadius: "24px 24px 0 0", padding: "24px 20px 36px", width: "100%", maxWidth: 480, border: "1px solid #24262F", borderBottom: "none" },
     groupRow: (active) => ({ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 14, marginBottom: 8, border: `1.5px solid ${active ? "#8B7CFF" : "#24262F"}`, background: active ? "#8B7CFF18" : "#0A0B12", cursor: "pointer" }),
   };
 
@@ -1038,12 +1072,7 @@ function App() {
                 <button style={S.menuItem(true)} onClick={() => { setCurrentUser(null); setShowProfileMenu(false); }}>
                   🚪 Sign Out
                 </button>
-                <button style={S.menuItem(true)} onClick={() => {
-                  if (window.confirm("Reset all app data? This permanently deletes all accounts, groups, and expenses on this device.")) {
-                    localStorage.removeItem(STORAGE_KEY);
-                    window.location.reload();
-                  }
-                }}>
+                <button style={S.menuItem(true)} onClick={() => { setShowResetConfirm(true); setShowProfileMenu(false); }}>
                   ♻️ Reset App Data
                 </button>
               </div>
@@ -1452,7 +1481,7 @@ function App() {
           onClose={() => setShowSettingsModal(false)}
           group={group}
           memberCount={members.length}
-          onSave={(updates) => { setGroups((prev) => prev.map((g) => g.id === group.id ? { ...g, ...updates } : g)); setShowSettingsModal(false); showToast("Group settings updated."); }}
+          onSave={(updates) => { setGroups((prev) => prev.map((g) => g.id === group.id ? { ...g, ...updates } : g)); setShowSettingsModal(false); showToast("Group settings updated.", "success"); }}
           onDeleteGroup={deleteGroup}
         />
       )}
@@ -1468,7 +1497,7 @@ function App() {
       )}
 
       {showGroupSwitcher && (
-        <div style={S.switcherOverlay} onClick={(e) => e.target === e.currentTarget && setShowGroupSwitcher(false)}>
+        <div className="sw-fadein" style={S.switcherOverlay} onClick={(e) => e.target === e.currentTarget && setShowGroupSwitcher(false)}>
           <div className="sw-sheet-anim" style={S.switcherSheet}>
             <div style={{ width: 40, height: 4, background: "#24262F", borderRadius: 4, margin: "0 auto 20px" }} />
             <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Your Family Groups</div>
@@ -1531,6 +1560,19 @@ function App() {
         );
       })()}
 
+      {showResetConfirm && (
+        <ConfirmDialog
+          title="Reset all app data?"
+          description="This permanently deletes all accounts, groups, and expenses stored on this device. This cannot be undone."
+          confirmLabel="Reset Everything"
+          onCancel={() => setShowResetConfirm(false)}
+          onConfirm={() => {
+            localStorage.removeItem(STORAGE_KEY);
+            window.location.reload();
+          }}
+        />
+      )}
+
       {/* ── Floating Bottom Navigation ── */}
       <nav style={S.navBar}>
         {[["dashboard","🏠","Home"],["transactions","🧾","Expenses"],["members","👨‍👩‍👧","Family"],["analytics","📊","Insights"]].map(([id,icon,lbl]) => {
@@ -1544,8 +1586,18 @@ function App() {
         })}
       </nav>
 
-      {/* Toast notification */}
-      {toast && <div className="sw-fadein" style={S.toast}>✓ {toast}</div>}
+      {/* Toast notifications */}
+      <div style={S.toastContainer}>
+        {toasts.map((t) => {
+          const cfg = TOAST_CONFIG[t.type] || TOAST_CONFIG.success;
+          return (
+            <div key={t.id} className={t.leaving ? "sw-toast-out" : "sw-toast-in"} style={S.toast(cfg.color, cfg.bg)}>
+              <div style={S.toastIcon(cfg.color, cfg.bg)}>{cfg.icon}</div>
+              <div style={S.toastMsg}>{t.message}</div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
